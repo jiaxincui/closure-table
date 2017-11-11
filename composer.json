@@ -1,14 +1,28 @@
 {
-    "name": "jiaixncui/closure-table",
+    "name": "jiaxincui/closure-table",
     "description": "A closure table tree component for laravel eloquent",
+    "keywords": ["laravel", "tree", "closure-table", "eloquent", "laravel-tree"],
     "type": "library",
     "license": "MIT",
     "authors": [
         {
             "name": "jiaxincui",
-            "email": "jenkincei@hotmail.com"
+            "email": "jenkincei@hotmail.com",
+            "role": "Developer"
         }
     ],
+    "support": {
+        "email": "jenkincei@hotmail.com",
+        "source":"https://github.com/jiaxincui/closure-table"
+    },
     "minimum-stability": "stable",
-    "require": {}
+    "require-dev": {
+        "illuminate/database": "5.5.*",
+        "illuminate/support": "5.5.*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Jiaxincui\\ClosureTable\\": "src/"
+        }
+    }
 }

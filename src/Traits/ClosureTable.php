@@ -11,11 +11,6 @@ use Jiaxincui\ClosureTable\Extensions\CollectionExtension;
 
 trait ClosureTable
 {
-    protected $ancestorColumn = 'ancestor';
-    protected $descendantColumn = 'descendant';
-    protected $distanceColumn = 'distance';
-    protected $parent_id;
-
     /**
      * Deleted Listener
      */
@@ -23,7 +18,7 @@ trait ClosureTable
     {
         parent::boot();
 
-        static::deleted(function (Model $model) {
+        static::deleting(function (Model $model) {
             $model->deleteRelationships();
         });
     }
@@ -48,6 +43,9 @@ trait ClosureTable
      */
     protected function getAncestorColumn()
     {
+        if (! isset($this->ancestorColumn)) {
+            return 'ancestor';
+        }
         return $this->ancestorColumn;
     }
 
@@ -58,6 +56,9 @@ trait ClosureTable
      */
     protected function getDescendantColumn()
     {
+        if (! isset($this->descendantColumn)) {
+            return 'descendant';
+        }
         return $this->descendantColumn;
     }
 
@@ -68,6 +69,9 @@ trait ClosureTable
      */
     protected function getDistanceColumn()
     {
+        if (! isset($this->distanceColumn)) {
+            return 'distance';
+        }
         return $this->distanceColumn;
     }
 
@@ -81,7 +85,7 @@ trait ClosureTable
         if (! isset($this->parentColunm)) {
             return 'parent';
         }
-        return $this->parentColumn;
+        return $this->parentColunm;
     }
     /**
      * Get ancestor column with table name
@@ -402,6 +406,27 @@ trait ClosureTable
     }
 
     /**
+     * Convert parameter
+     *
+     * @param $parameter
+     * @return Model|null
+     */
+    protected function parameter2Model($parameter)
+    {
+        $model = null;
+        if ($parameter instanceof Model) {
+            $model = $parameter;
+        } elseif (is_numeric($parameter)) {
+            $model = $this->findOrFail($parameter);
+        } else {
+            throw (new ModelNotFoundException)->setModel(
+                get_class($this->model), $parameter
+            );
+        }
+        return $model;
+    }
+
+    /**
      * Delete nonexistent relations
      *
      * @return bool
@@ -436,41 +461,19 @@ trait ClosureTable
     }
 
     /**
-     * Convert parameter
-     *
-     * @param $parameter
-     * @return Model|null
-     */
-    protected function parameter2Model($parameter)
-    {
-        $model = null;
-        if ($parameter instanceof Model) {
-            $model = $parameter;
-        } elseif (is_numeric($parameter)) {
-            $model = $this->findOrFail($parameter);
-        } else {
-            throw (new ModelNotFoundException)->setModel(
-                get_class($this->model), $parameter
-            );
-        }
-        return $model;
-    }
-
-    /**
      * Create a child from Array
      *
      * @param array $attributes
      * @return mixed
      * @throws ClosureTableException
      */
-    public function createChild($attributes = [])
+    public function createChild(array $attributes)
     {
         if ($this->joinRelationSelf()->count() === 0) throw new ClosureTableException('Model is not a node');
 
         $parent_id = $this->getKey();
         $child = $this->create($attributes);
-        $this->insertClosure($parent_id, $child->id);
-        return $child;
+        return $this->insertClosure($parent_id, $child->getKey()) ? $child : null;
     }
 
     /**
@@ -481,26 +484,6 @@ trait ClosureTable
     public function makeRoot()
     {
         return $this->insertSelfClosure() && $this->unbindRelationships();
-    }
-
-    /**
-     * This model is root
-     *
-     * @return bool
-     */
-    public function isRoot()
-    {
-        return $this->getParent() === null && $this->joinRelationSelf()->count() > 0;
-    }
-
-    /**
-     * This model is leaf
-     *
-     * @return bool
-     */
-    public function isLeaf()
-    {
-        return $this->joinRelationSelf()->count() > 0 && $this->getDescendants()->count() === 0;
     }
 
     /**
@@ -531,6 +514,103 @@ trait ClosureTable
         });
 
         return true;
+    }
+
+    /**
+     * @param array $attributes
+     * @return mixed
+     * @throws ClosureTableException
+     */
+    public function createSibling(array $attributes)
+    {
+        if ($this->joinRelationSelf()->count() === 0) throw new ClosureTableException('Model is not a node');
+
+        $parent_id = $this->getParent()->getKey();
+        $sibling = $this->create($attributes);
+        return $this->insertClosure($parent_id, $sibling->getKey()) ? $sibling : null;
+    }
+
+    /**
+     * @param $siblings
+     * @return bool
+     */
+    public function addSiblings($siblings)
+    {
+        $parent = $this->getParent();
+        if (! $parent) return false;
+        return $parent->addChild($siblings);
+    }
+
+    /**
+     * @param $ancestor
+     * @return bool
+     * @throws ClosureTableException
+     */
+    public function moveTo($ancestor)
+    {
+        $ancestorId = $this->parameter2Model($ancestor)->getKey();
+        $ids = $this->getDescendantsAndSelf([$this->getKeyName()])->pluck($this->getKeyName())->toArray();
+
+        if (in_array($ancestorId, $ids)) {
+            throw new ClosureTableException('Can\'t move to descendant');
+        }
+        DB::connection($this->connection)->transaction(function () use ($ancestorId) {
+            if ($this->joinRelationSelf()->count() > 0) {
+                if (! $this->unbindRelationships()) {
+                    throw new ClosureTableException('Unbind relationships failed');
+                }
+            }
+            if (! $this->associateTree($ancestorId)) {
+                throw new ClosureTableException('Associate tree failed');
+            }
+        });
+        return true;
+    }
+
+    /**
+     * add to parent
+     *
+     * @param $ancestor
+     * @return bool
+     */
+    public function addTo($ancestor)
+    {
+        return $this->moveTo($ancestor);
+    }
+
+    /**
+     * fix the model to ancestors relation. If you need to fix all, cycle all
+     *
+     * @return bool
+     */
+    public function perfectNode()
+    {
+        if ($this->isRoot()) {
+            return true;
+        }
+        $parent = $this->getParent();
+
+        if (! $this->associateTree($parent->getKey())) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Each and fix tree's every item, If your tree too large careful with it
+     *
+     * @return bool
+     */
+    public function perfectTree()
+    {
+        $result = true;
+        $this->getDescendants()->each(function ($item) use ($result) {
+            if (! $item->perfectNode()) {
+                $result = false;
+                return false;
+            }
+        });
+        return $result;
     }
 
     /**
@@ -616,7 +696,7 @@ trait ClosureTable
      */
     public function hasAncestors()
     {
-        return !!$this->countAncestors();
+        return $this->joinRelationBy('ancestor')->count() > 0;
     }
 
     /**
@@ -632,7 +712,7 @@ trait ClosureTable
      */
     public function hasDescendants()
     {
-        return !!$this->countDescendants();
+        return $this->joinRelationBy('descendant')->count() > 0;
     }
 
     /**
@@ -653,12 +733,36 @@ trait ClosureTable
     }
 
     /**
+     * @return mixed
+     */
+    public function countChildren()
+    {
+        return $this->joinRelationNearBy('descendant')->count();
+    }
+
+    /**
+     * @return bool
+     */
+    public function hasChildren()
+    {
+        return $this->joinRelationNearBy('descendant')->count() > 0;
+    }
+
+    /**
      * @param array $columns
      * @return mixed
      */
     public function getParent(array $columns = ['*'])
     {
         return $this->joinRelationNearBy('ancestor')->first($columns);
+    }
+
+    /**
+     * @return bool
+     */
+    public function hasParent()
+    {
+        return !! $this->joinRelationNearBy('ancestor')->first();
     }
 
     /**
@@ -727,32 +831,6 @@ trait ClosureTable
         $model = $this->parameter2Model($sibling);
         $ids = $this->getSiblings([$keyName])->pluck($keyName)->toArray();
         return in_array($model->getKey(), $ids);
-    }
-
-    /**
-     * @param $ancestor
-     * @return bool
-     * @throws ClosureTableException
-     */
-    public function moveTo($ancestor)
-    {
-        $ancestorId = $this->parameter2Model($ancestor)->getKey();
-        $ids = $this->getDescendantsAndSelf([$this->getKeyName()])->pluck($this->getKeyName())->toArray();
-
-        if (in_array($ancestorId, $ids)) {
-            throw new ClosureTableException('Can\'t move to descendant');
-        }
-        DB::connection($this->connection)->transaction(function () use ($ancestorId) {
-            if ($this->joinRelationSelf()->count() > 0) {
-                if (! $this->unbindRelationships()) {
-                    throw new ClosureTableException('Unbind relationships failed');
-                }
-            }
-            if (! $this->associateTree($ancestorId)) {
-                throw new ClosureTableException('Associate tree failed');
-            }
-        });
-        return true;
     }
 
     /**
@@ -842,49 +920,34 @@ trait ClosureTable
     }
 
     /**
-     * add to parent
+     * This model is root
      *
-     * @param $ancestor
      * @return bool
      */
-    public function addTo($ancestor)
+    public function isRoot()
     {
-        return $this->moveTo($ancestor);
+        return $this->getParent() === null && $this->joinRelationSelf()->count() > 0;
     }
 
     /**
-     * fix the model to ancestors relation. If you need to fix all, cycle all
+     * This model is leaf
      *
      * @return bool
      */
-    public function perfectNode()
+    public function isLeaf()
     {
-        if ($this->isRoot()) {
-            return true;
-        }
-        $parent = $this->getParent();
-
-        if (! $this->associateTree($parent->getKey())) {
-            return false;
-        }
-        return true;
+        return $this->joinRelationSelf()->count() > 0 && $this->getDescendants()->count() === 0;
     }
 
     /**
-     * Each and fix tree's every item, If your tree too large careful with it
-     *
      * @return bool
      */
-    public function perfectTree()
+    public function isIsolated()
     {
-        $result = true;
-        $this->getDescendants()->each(function ($item) use ($result) {
-            if (! $item->perfectNode()) {
-                $result = false;
-                return false;
-            }
-        });
-        return $result;
+        $key = $this->getKey();
+        $keyName = $this->getKeyName();
+        $ids = $this->joinWithoutClosure()->get([$keyName])->pluck($keyName)->toArray();
+        return in_array($key, $ids);
     }
 
     /**
@@ -907,16 +970,6 @@ trait ClosureTable
         return self::scopeIsolated()->get($columns);
     }
 
-    /**
-     * @return bool
-     */
-    public function isIsolated()
-    {
-        $key = $this->getKey();
-        $keyName = $this->getKeyName();
-        $ids = $this->joinWithoutClosure()->get([$keyName])->pluck($keyName)->toArray();
-        return in_array($key, $ids);
-    }
 
     /**
      * @param array $models
