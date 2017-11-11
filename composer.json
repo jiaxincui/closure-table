@@ -1,0 +1,14 @@
+{
+    "name": "jiaixncui/closure-table",
+    "description": "A closure table tree component for laravel eloquent",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "jiaxincui",
+            "email": "jenkincei@hotmail.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {}
+}
