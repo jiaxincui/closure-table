@@ -1,6 +1,6 @@
 {
     "name": "jiaxincui/closure-table",
-    "description": "A closure table tree component for laravel eloquent",
+    "description": "A closure table tree package for laravel eloquent",
     "keywords": ["laravel", "tree", "closure-table", "eloquent", "laravel-tree"],
     "type": "library",
     "license": "MIT",
