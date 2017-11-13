@@ -598,7 +598,11 @@ trait ClosureTable
      */
     public function moveTo($ancestor)
     {
-        $ancestorId = $this->parameter2Model($ancestor)->getKey();
+        $ancestor = $this->parameter2Model($ancestor);
+
+        if ($ancestor->joinRelationSelf()->count() === 0) return false;
+
+        $ancestorId = $ancestor->getKey();
         $ids = $this->getDescendantsAndSelf([$this->getKeyName()])->pluck($this->getKeyName())->toArray();
 
         if (in_array($ancestorId, $ids)) {
