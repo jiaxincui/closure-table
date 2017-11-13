@@ -6,7 +6,7 @@
 
 - 优雅的树形数据设计模式
 - 数据和结构分表,操作数据不影响结构
-- 一个Eloquent Trait操作简单
+- 一个Eloquent Trait简单操作
 - 无需修改表,兼容旧数据
 - 完善的树操作方法
 - 支持生成树形数据
@@ -234,18 +234,6 @@ $menu->isLeaf();
 // 是否孤立节点
 $menu->isIsolated();
   
-// 是否有上级
-$menu->hasAncestors();
-  
-// 是否有下级
-$menu->hasDescendants();
-  
-// 是否有孩子(直接下级)
-$menu->hasChildren();
-  
-// 是否有直接上级
-$menu->hasParent();
-  
 // 是否$descendant的上级
 $menu->isAncestorOf($descendant);
   
@@ -265,7 +253,7 @@ $menu->isSiblingOf($sibling);
 $menu->isBesideOf($beside);
 ```
 
-### 数据维护
+### 结构维护
 
 ```php
 <?php
