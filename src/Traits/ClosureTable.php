@@ -497,7 +497,7 @@ trait ClosureTable
     /**
      * @return bool
      */
-    public function attachClosure()
+    public function attachSelf()
     {
         return $this->insertSelfClosure();
     }
@@ -505,7 +505,7 @@ trait ClosureTable
     /**
      * @return bool
      */
-    public function detachClosure()
+    public function detachSelf()
     {
         return $this->deleteRelationships();
     }
@@ -840,8 +840,8 @@ trait ClosureTable
         }
         $keyName = $this->getKeyName();
         $model = $this->parameter2Model($beside);
-        $ids = $this->getBesides([$keyName])->pluck($keyName)->toArray();
-        return in_array($model->getKey(), $ids);
+        $ids = $this->getDescendantsAndSelf([$keyName])->pluck($keyName)->toArray();
+        return ! in_array($model->getKey(), $ids);
     }
 
     /**

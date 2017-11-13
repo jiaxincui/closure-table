@@ -30,6 +30,6 @@ class CollectionExtension extends Collection
                 $tree[] = &$items[$item[$key]];
             }
         }
-        return $tree;
+        return $tree[0];
     }
 }
