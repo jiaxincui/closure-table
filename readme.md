@@ -13,11 +13,13 @@
 - 支持多棵树并存(多个根)
 - 支持节点/树修复
 - 支持软删除
+- ...
 
 ## 依赖
 
 - php > 5.6.0
-- laravel > 5.1.0
+- laravel > 5.4.0
+- mysql > 5.1.0
 
 ## 关于`Closure Table`
 
@@ -57,6 +59,7 @@
 `ClosureTable`提供了大量方法操作树.
 
 ### 影响树结构的方法
+
 ```php
 <?php
 
@@ -97,7 +100,7 @@ $menu->createSibling($attributes);
 // 建立一个自身的关联,return bool
 $menu->attachSelf();
   
-// 解除自身的所有关联,并且解除后代的所有关联(这个操作不保留子树，将使自己和所有后代都成孤立状态),return bool
+// 解除自身的所有关联,并且解除后代的所有关联(这个操作不保留子树结构，将使自己和所有后代都成孤立状态),return bool
 $menu->detachSelf();
 ```
 
@@ -143,15 +146,25 @@ Menu::isolated()->where('id', '>', 5)->get();
 Menu::getRoots();
 ```
 
-* 以上`get...()`方法都包含一个query构造器,如`getDescendants()`对应有一个`queryDescendants`,这使得你可以在查询中加入条件查询或排序
-你可以这样使用`$menu->queryDescendants()->where('id', '>', 5)->orderBy('sort','desc')->get();`
+* 以上`get...()`方法都包含一个query构造器,如`getDescendants()`对应有一个`queryDescendants`,
+
+  这使得你可以在查询中加入条件查询或排序你可以这样使用
+  
+  `$menu->queryDescendants()->where('id', '>', 5)->orderBy('sort','desc')->get();`
+  
   > `getRoot()`,`getParent()`,`getRoots()`,`getIsolated()`4个方法没有query构造器
 
-* 如果你想获取只包含单个或多个列的结果可以在`get...()`方法里传入参数,如:`$menu->getAncestors(['id','name']);`
+* 如果你想获取只包含单个或多个列的结果可以在`get...()`方法里传入参数,如:
 
-* 由于数据库不需要`parent_id`列,如果你想在结果中显示包含此列的内容可以在构造器后加入`withParent()`,
-如:`$menu->queryDescendantsAndSelf()->withParent()->get()`.
-默认列名为`parent`,如果你想自定义这个列名在`model`里定义`protected $parentColunm = 'parent_id'`
+  `$menu->getAncestors(['id','name']);`
+
+* 由于数据库不需要`parent_id`列,如果你想在结果中显示包含此列的内容可以在构造器后加入`withParent()`,如:
+
+  `$menu->queryDescendantsAndSelf()->withParent()->get()`.
+  
+  默认列名为`parent`,如果你想自定义这个列名在`model`里定义
+  
+  `protected $parentColunm = 'parent_id'`
 
 ### 生成树形数据的方法
 
@@ -197,13 +210,15 @@ $menu->getBesideTree();
         ]
     ]
 ]
-
-
 ```
-* 生成的树的`children`键默认为`children`,如果你想自定义可以作为第2个参数传入,如:
-`$menu->getTree(['sortColumn', 'desc'], 'son');`
-如果你想获取只包含单个或多个列的结果可以作为第3个参数传入,如:
-`$menu->getTree(['sortColumn', 'desc'], 'son', ['id', 'name']);`
+
+* 生成的树`children`键默认为`children`,如果你想自定义可以作为第2个参数传入,如:
+
+  `$menu->getTree(['sortColumn', 'desc'], 'son');`
+
+  如果你想获取只包含单个或多个列的结果可以作为第3个参数传入,如:
+
+  `$menu->getTree(['sortColumn', 'desc'], 'son', ['id', 'name']);`
 
 * 你的表里可能包含多棵树,如果你想一一获取他们可以这样做:
     ```php
@@ -214,11 +229,12 @@ $menu->getBesideTree();
     foreach ($roots as $root) {
         $multiTree[] = $root->getTree();
     }
-    $data = $mutiTree;
-    
+  
+    var_dump($multiTree);
+  
     ```
 
-### 判断
+### 判断方法
 
 ```php
 <?php
@@ -296,7 +312,7 @@ $menu->perfectTree();
 $ composer requrie jiaxincui/closure-table
 ```
 
-建立树需要新建一个`closure`表如:`menu_closure`
+管理树需要新建一个`closure`关联表,如:`menu_closure`
 
 ```php
 <?php
@@ -309,9 +325,9 @@ Schema::create('menu_closure', function (Blueprint $table) {
         });
 ```
 
-1. 在`model`里使用`Jiaxincui\ClosureTable\Traits\ClosureTable`Trait.
+1. 在`model`里use trait `Jiaxincui\ClosureTable\Traits\ClosureTable`.
 
-2. 如果你想自定义表名和字段，可在`model`里定义以下属性:`$closureTable`,`$ancestorColumn`,`$descendantColumn`,`$distanceColumn`.
+2. 如果你想自定义关联表名和字段，可在`model`里定义以下属性:`$closureTable`,`$ancestorColumn`,`$descendantColumn`,`$distanceColumn`.
 
 3. 如果你想自定义生成的树形数据里`parent`字段,在`model`里定义属性`$parentColumn`.
   
