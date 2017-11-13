@@ -14,6 +14,11 @@
 - 支持节点/树修复
 - 支持软删除
 
+## 依赖
+
+- php > 5.6.0
+- laravel > 5.1.0
+
 ## 关于`Closure Table`
 
 > Closure table is a simple and elegant way of storing and querying hierarchical data in any RDBMS. By hierarchical data we mean a set of data that has some parent – child relationship among them. We use the word ‘tree’ instead of hierarchies commonly. As an example we may take the relationships between geographic locations like ‘Countries’, ‘States/ Province’, ‘Districts/ Cities’ etc.
