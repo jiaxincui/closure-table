@@ -153,7 +153,7 @@ Menu::getRoots();
 如:`$menu->queryDescendantsAndSelf()->withParent()->get()`.
 默认列名为`parent`,如果你想自定义这个列名在`model`里定义`protected $parentColunm = 'parent_id'`
 
-### 生成树形数据
+### 生成树形数据的方法
 
 提供多种方法生成树形数据,可从任意节点生成树
 ```php
@@ -263,7 +263,7 @@ $menu->delete();
 删除一条记录,这个操作将解除自身的所有关联,
 **并且解除后代的所有关联(这个操作不保留子树结构，将使所有后代都成孤立状态)**
 
-**请勿使用以下两个方法来删除模型**
+**请勿使用以下方法来删除模型**
 
 `Menu::destroy(1);`
 
@@ -284,7 +284,8 @@ $menu = Menu::find(20);
 // 修复此节点的关联
 $menu->perfectNode();
   
-// 修复树关联,注意:这将循环整颗树调用perfectNode(),如果你的树很庞大将耗费大量资源,请慎用
+// 修复树关联,注意:这个操作将追朔到到根节点然后从根遍历整颗树调用perfectNode(),如果你的树很庞大将耗费大量资源,请慎用.
+// 替代方法是使用队列对每个节点perfectNode()
 $menu->perfectTree();
 
 ```
