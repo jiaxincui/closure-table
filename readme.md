@@ -253,6 +253,24 @@ $menu->isSiblingOf($sibling);
 $menu->isBesideOf($beside);
 ```
 
+### 删除操作
+
+closureTable监听了模型的`deleting`事件
+
+```php
+$menu->delete();
+```
+删除一条记录,这个操作将解除自身的所有关联,
+*并且解除后代的所有关联(这个操作不保留子树结构，将使所有后代都成孤立状态)*
+
+请勿使用以下两个方法来删除模型
+
+`Menu::destroy(1);`
+
+`Menu::where('id', 1)->delete()`
+
+因为这些操作不会触发`deleting`事件
+
 ### 结构维护
 
 ```php
