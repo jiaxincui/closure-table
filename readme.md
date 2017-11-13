@@ -140,7 +140,7 @@ Menu::getRoots();
 
 * 以上`get...()`方法都包含一个query构造器,如`getDescendants()`对应有一个`queryDescendants`,这使得你可以在查询中加入条件查询或排序
 你可以这样使用`$menu->queryDescendants()->where('id', '>', 5)->orderBy('sort','desc')->get();`
-  > `getRoot()`,`getParent()`两个方法不没有query构造器
+  > `getRoot()`,`getParent()`,`getRoots()`,`getIsolated()`4个方法没有query构造器
 
 * 如果你想获取只包含单个或多个列的结果可以在`get...()`方法里传入参数,如:`$menu->getAncestors(['id','name']);`
 
