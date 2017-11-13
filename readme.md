@@ -10,6 +10,7 @@
 - 直接在需要生成树的Model上使用无需考虑旧数据兼容性
 - 完善的树操作方法
 - 支持生成树形数据
+- 支持多颗树并存(多个根)
 - 支持节点/树修复
 - 支持软删除
 
@@ -56,33 +57,37 @@
 
 $menu = Menu::find(10);
 
-$menu->makeRoot(); // 作为根,return bool
+// 将$menu作为根,return bool
+$menu->makeRoot();
 
-$menu->createChild($attributes); // 创建一个下级菜单,return bool
+// 创建一个子级节点,return new model
+$menu->createChild($attributes);
 
-$menu = Menu::create($attributes); // 创建一个新的菜单,return model
+// 创建一个新的菜单，此时该菜单无任何关联,return model
+$child = Menu::create($attributes);
 
-$menu->addChild($child); // 添加一个child,return bool
+// 将一个已存在的菜单添加到子级,$child可为模型实例、模型实例集合或id、包含id的数组,return bool
+$menu->addChild($child);
+$menu->addChild(12);
+$menu->addChild('12');
+$menu->addChild([3, 4, 5]);
 
-$menu->addChild(12); // 将id为3的$menu添加到下级,return bool
+// 移动到$parent的下级,后代也将随之移动,$parent可为模型实例或id,return bool
+$menu->moveTo($parent);
+$menu->moveTo(2); 
+$menu->moveTo('2');
 
-$menu->addChild('12'); //同上,return bool
+// 同moveTo()
+$menu->addTo($parent);
 
-$menu->addChild([3, 4, 5]); // 批量添加,return bool
+// 添加一个或多个同级节点,$siblings的后代也将随之移动,$siblings可为模型实例集合或id、包含id的数组,return bool
+$menu->addSibling($siblings);
+$menu->addSibling(2);
+$menu->addSibling('2');
+$menu->addSibling([2,3,4]);
 
-$menu->moveTo($parent); // 移动到$parent的子代,后代也将随之移动,return bool
-
-$menu->moveTo(2); // 传入id,效果同上,return bool
-
-$menu->moveTo('2'); // 传入id,效果同上,return bool
-
-$menu->addTo($parent); // 同moveTo()
-
-$menu->addSibling($siblings); // 添加一个或多个同级节点,后代也将随之移动
-
-$menu->addSibling(2); // 传入id,效果同上
-
-$menu->createSibling($attributes); // 新建一个同级节点
+// 新建一个同级节点,return new model
+$menu->createSibling($attributes);
 
 ```
 
@@ -92,7 +97,8 @@ $menu->createSibling($attributes); // 新建一个同级节点
 <?php
 $menu = Menu::find(3);
 
-$menu->getDescendants(); // 获取所有后代
+// 获取所有后代, return model collection
+$menu->getDescendants($columns);
 
 $menu->queryDescendants()->where('id', '>', 5)->orderBy('sort','desc')->get(); // 获取所有id大于5的后代并排序
 
