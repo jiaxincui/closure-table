@@ -746,7 +746,10 @@ trait ClosureTable
         $keyName = $this->getKeyName();
         $descendant = $this->getQualifiedDescendantColumn();
         $ids = $this->getDescendantsAndSelf([$keyName])->pluck($keyName)->toArray();
-        $root = $this->getRoot();
+        if (is_null($root = $this->getRoot())) {
+            return $this;
+        }
+        $root = $this->getRoot() ? : $this;
         return $root
             ->joinRelationBy('descendant', true)
             ->whereNotIn($descendant, $ids);
@@ -758,9 +761,6 @@ trait ClosureTable
      */
     public function getBesides(array $columns = ['*'])
     {
-        if ($this->isRoot()) {
-            return null;
-        }
         return $this->queryBesides()->get($columns);
     }
 
