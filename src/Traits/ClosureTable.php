@@ -2,6 +2,7 @@
 namespace Jiaxincui\ClosureTable\Traits;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -550,7 +551,7 @@ trait ClosureTable
         $keyName = $this->getKeyName();
         $key = $this->getKey();
         $ids = $this->getAncestorsAndSelf([$keyName])->pluck($keyName)->toArray();
-        if (! is_array($children)) {
+        if (! (is_array($children) || $children instanceof Collection)) {
             $children = array($children);
         }
         DB::connection($this->connection)->transaction(function () use ($children, $key, $ids) {
