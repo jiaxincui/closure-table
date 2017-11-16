@@ -19,7 +19,7 @@ trait ClosureTable
         parent::boot();
 
         static::updating(function (Model $model) {
-            if ($model->isDirty($model->getParentColumn)) {
+            if ($model->isDirty($model->getParentColumn())) {
                 $model->updateClosure();
             }
         });
@@ -369,11 +369,11 @@ trait ClosureTable
      * @param null $parentKey
      * @return bool
      */
-    protected function attachTreeTo($parentKey = null)
+    protected function attachTreeTo($parentKey = 0)
     {
         if (! $this->exists) throw new ModelNotFoundException();
 
-        if (is_null($parentKey) || (int) $parentKey === 0) return false;
+        if (is_null($parentKey)) $parentKey = 0;
 
         if ($this->joinRelationSelf()->count() === 0) $this->insertSelfClosure();
 
@@ -412,14 +412,14 @@ trait ClosureTable
         $ancestorColumn = $this->getAncestorColumn();
         $descendantColumn = $this->getDescendantColumn();
         $query = "
-                  DELETE FROM {$closureTable}
-                  WHERE {$descendantColumn} IN (
-                    SELECT d FROM (
-                      SELECT {$descendantColumn} as d FROM {$closureTable}
-                        WHERE {$ancestorColumn} = {$key}
-                      ) as dct
-                    )
-                  ";
+            DELETE FROM {$closureTable}
+            WHERE {$descendantColumn} IN (
+            SELECT d FROM (
+              SELECT {$descendantColumn} as d FROM {$closureTable}
+                WHERE {$ancestorColumn} = {$key}
+              ) as dct
+            )
+        ";
 
         DB::connection($this->connection)->delete($query);
         return true;
@@ -448,11 +448,16 @@ trait ClosureTable
 
     protected function updateClosure()
     {
-        $parent = $this->parameter2Model($this->getParentKey());
+        if ($this->getParentKey()) {
+            $parent = $this->parameter2Model($this->getParentKey());
+            if ($parent->joinRelationSelf()->count() === 0) {
+                return false;
+            }
+            $parentKey = $parent->getKey();
+        } else {
+            $parentKey = 0;
+        }
 
-        if ($parent->joinRelationSelf()->count() === 0) return false;
-
-        $parentKey = $parent->getKey();
         $ids = $this->getDescendantsAndSelf([$this->getKeyName()])->pluck($this->getKeyName())->toArray();
 
         if (in_array($parentKey, $ids)) {
@@ -486,19 +491,26 @@ trait ClosureTable
         $ancestorColumn = $instance->getAncestorColumn();
         $descendantColumn = $instance->getDescendantColumn();
         $keyName = $instance->getKeyName();
-        $deleteAncestor = "
-                DELETE ct FROM {$closureTable} ct
-                    LEFT JOIN {$table} t ON ct.{$ancestorColumn} = t.{$keyName}
-                    WHERE t.{$keyName} IS NULL {$segment}
-              
+        $query = "
+            DELETE ct FROM {$closureTable} ct
+            WHERE {$descendantColumn} IN (
+              SELECT d FROM (
+                SELECT {$descendantColumn} as d FROM {$closureTable}
+                LEFT JOIN {$table} t 
+                ON {$descendantColumn} = t.{$keyName}
+                WHERE t.{$keyName} IS NULL {$segment}
+              ) as dct
+            )
+            OR {$ancestorColumn} IN (
+              SELECT d FROM (
+                SELECT {$ancestorColumn} as d FROM {$closureTable}
+                LEFT JOIN {$table} t 
+                ON {$ancestorColumn} = t.{$keyName}
+                WHERE t.{$keyName} IS NULL {$segment}
+              ) as act
+            )
         ";
-        $deleteDescendant = "
-                DELETE ct FROM {$closureTable} ct
-                    LEFT JOIN {$table} t ON ct.{$descendantColumn} = t.{$keyName}
-                    WHERE t.{$keyName} IS NULL {$segment}
-        ";
-        DB::connection($instance->connection)->delete($deleteAncestor);
-        DB::connection($instance->connection)->delete($deleteDescendant);
+        DB::connection($instance->connection)->delete($query);
         return true;
     }
 
@@ -545,6 +557,8 @@ trait ClosureTable
         if ($this->isRoot()) {
             return true;
         }
+        $this->setParentKey(0);
+        $this->save();
         return $this->insertSelfClosure() && $this->detachRelationships();
     }
 
@@ -571,7 +585,8 @@ trait ClosureTable
                 if (in_array($model->getKey(), $ids)) {
                     throw new ClosureTableException('Children can\'t be ancestor');
                 }
-                $model->setParentKey($key)->save();
+                $model->setParentKey($key);
+                $model->save();
             }
         });
 
@@ -612,7 +627,8 @@ trait ClosureTable
     public function moveTo($parent)
     {
         $model = $this->parameter2Model($parent);
-        $this->setParentKey($model->getKey())->save();
+        $this->setParentKey($model->getKey());
+        $this->save();
 
         return true;
     }
@@ -639,6 +655,11 @@ trait ClosureTable
             return true;
         }
         $parent = $this->getParent();
+
+        if (is_null($parent)) {
+            $this->makeRoot();
+            return true;
+        }
 
         return $this->attachTreeTo($parent->getKey());
     }
