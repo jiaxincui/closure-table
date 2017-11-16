@@ -252,8 +252,6 @@ trait ClosureTable
     /**
      * Insert node relation to closure table
      *
-     * @param $ancestorId
-     * @param $descendantId
      * @return bool
      */
     protected function insertClosure()
@@ -288,6 +286,8 @@ trait ClosureTable
     {
         if (! $this->exists) throw new ModelNotFoundException();
 
+        if ($this->joinRelationSelf()->count() > 0) return true;
+
         $key = $this->getKey();
         $table = $this->getClosureTable();
         $ancestorColumn = $this->getAncestorColumn();
@@ -296,7 +296,6 @@ trait ClosureTable
         $query = "
             INSERT INTO {$table} ({$ancestorColumn}, {$descendantColumn}, {$distance})
             VALUES ({$key}, {$key}, 0)
-            ON DUPLICATE KEY UPDATE {$distance} = VALUES ({$distance})
         ";
         DB::connection($this->connection)->insert($query);
         return true;
@@ -537,6 +536,9 @@ trait ClosureTable
      */
     public function makeRoot()
     {
+        if ($this->isRoot()) {
+            return true;
+        }
         return $this->insertSelfClosure() && $this->detachRelationships();
     }
 
@@ -632,10 +634,7 @@ trait ClosureTable
         }
         $parent = $this->getParent();
 
-        if (! $this->attachTreeTo($parent->getKey())) {
-            return false;
-        }
-        return true;
+        return $this->attachTreeTo($parent->getKey());
     }
 
     /**
@@ -646,7 +645,7 @@ trait ClosureTable
     public function perfectTree()
     {
         $result = true;
-        $this->getDescendants()->each(function ($item) use ($result) {
+        $this->getDescendants()->each(function ($item) use (&$result) {
             if (! $item->perfectNode()) {
                 $result = false;
                 return false;
@@ -733,9 +732,6 @@ trait ClosureTable
         $keyName = $this->getKeyName();
         $descendant = $this->getQualifiedDescendantColumn();
         $ids = $this->getDescendantsAndSelf([$keyName])->pluck($keyName)->toArray();
-        if (is_null($root = $this->getRoot())) {
-            return $this;
-        }
         $root = $this->getRoot() ? : $this;
         return $root
             ->joinRelationBy('descendant', true)
@@ -795,7 +791,6 @@ trait ClosureTable
     public function isParentOf($child)
     {
         $model = $this->parameter2Model($child);
-        $keyName = $this->getKeyName();
         return $this->getKey() === $model->getParentKey();
     }
 
