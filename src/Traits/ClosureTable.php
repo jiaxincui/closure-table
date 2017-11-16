@@ -141,7 +141,9 @@ trait ClosureTable
      */
     protected function joinRelationBy($column, $withSelf = false)
     {
-        if (! $this->exists) throw new ModelNotFoundException();
+        if (! $this->exists) {
+            throw new ModelNotFoundException();
+        }
 
         $keyName = $this->getQualifiedKeyName();
         $key = $this->getKey();
@@ -176,7 +178,9 @@ trait ClosureTable
      */
     protected function joinRelationSelf()
     {
-        if (! $this->exists) throw new ModelNotFoundException();
+        if (! $this->exists) {
+            throw new ModelNotFoundException();
+        }
 
         $keyName = $this->getQualifiedKeyName();
         $key = $this->getKey();
@@ -256,7 +260,9 @@ trait ClosureTable
      */
     protected function insertClosure()
     {
-        if (! $this->exists) throw new ModelNotFoundException();
+        if (! $this->exists) {
+            throw new ModelNotFoundException();
+        }
 
         $ancestorId = $this->getParentKey();
 
@@ -290,9 +296,13 @@ trait ClosureTable
      */
     protected function insertSelfClosure()
     {
-        if (! $this->exists) throw new ModelNotFoundException();
+        if (! $this->exists) {
+            throw new ModelNotFoundException();
+        }
 
-        if ($this->joinRelationSelf()->count() > 0) return true;
+        if ($this->joinRelationSelf()->count() > 0) {
+            return true;
+        }
 
         $key = $this->getKey();
         $table = $this->getClosureTable();
@@ -330,7 +340,9 @@ trait ClosureTable
      */
     protected function detachRelationships()
     {
-        if (! $this->exists) throw new ModelNotFoundException();
+        if (! $this->exists) {
+            throw new ModelNotFoundException();
+        }
 
         $key = $this->getKey();
         $table = $this->getClosureTable();
@@ -371,11 +383,17 @@ trait ClosureTable
      */
     protected function attachTreeTo($parentKey = 0)
     {
-        if (! $this->exists) throw new ModelNotFoundException();
+        if (! $this->exists) {
+            throw new ModelNotFoundException();
+        }
 
-        if (is_null($parentKey)) $parentKey = 0;
+        if (is_null($parentKey)) {
+            $parentKey = 0;
+        }
 
-        if ($this->joinRelationSelf()->count() === 0) $this->insertSelfClosure();
+        if ($this->joinRelationSelf()->count() === 0) {
+            $this->insertSelfClosure();
+        }
 
         $key = $this->getKey();
         $table = $this->getClosureTable();
@@ -403,9 +421,13 @@ trait ClosureTable
      */
     protected function deleteRelationships()
     {
-        if (! $this->exists) throw new ModelNotFoundException();
+        if (! $this->exists) {
+            throw new ModelNotFoundException();
+        }
 
-        if ($this->joinRelationSelf()->count() === 0) return false;
+        if ($this->joinRelationSelf()->count() === 0) {
+            return false;
+        }
 
         $key = $this->getKey();
         $closureTable = $this->getClosureTable();
@@ -539,7 +561,9 @@ trait ClosureTable
      */
     public function createChild(array $attributes)
     {
-        if ($this->joinRelationSelf()->count() === 0) throw new ClosureTableException('Model is not a node');
+        if ($this->joinRelationSelf()->count() === 0) {
+            throw new ClosureTableException('Model is not a node');
+        }
 
         $parentKey = $this->getKey();
         $attributes[$this->getParentColumn()] = $parentKey;
@@ -571,7 +595,9 @@ trait ClosureTable
      */
     public function addChild($children)
     {
-        if ($this->joinRelationSelf()->count() === 0) throw new ClosureTableException('Model is not a node');
+        if ($this->joinRelationSelf()->count() === 0) {
+            throw new ClosureTableException('Model is not a node');
+        }
 
         $keyName = $this->getKeyName();
         $key = $this->getKey();
@@ -600,7 +626,9 @@ trait ClosureTable
      */
     public function createSibling(array $attributes)
     {
-        if ($this->joinRelationSelf()->count() === 0) throw new ClosureTableException('Model is not a node');
+        if ($this->joinRelationSelf()->count() === 0) {
+            throw new ClosureTableException('Model is not a node');
+        }
 
         $parentKey = $this->getParent()->getKey();
         $attributes[$this->getParentColumn()] = $parentKey;
@@ -615,7 +643,9 @@ trait ClosureTable
     public function addSiblings($siblings)
     {
         $parent = $this->getParent();
-        if (! $parent) return false;
+        if (! $parent) {
+            return false;
+        }
         return $parent->addChild($siblings);
     }
 
