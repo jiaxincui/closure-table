@@ -25,12 +25,11 @@ trait ClosureTable
         });
 
         static::created(function (Model $model) {
-            $model->insertClosure();
+            $model->insertClosure($model->getParentKey() ? : 0);
         });
 
         static::deleting(function (Model $model) {
-            $model->detachSelfRelation();
-            $model->detachRelationships();
+            $model->deleteObservers();
         });
     }
 
@@ -256,18 +255,13 @@ trait ClosureTable
     /**
      * Insert node relation to closure table
      *
+     * @param int $ancestorId
      * @return bool
      */
-    protected function insertClosure()
+    protected function insertClosure($ancestorId = 0)
     {
         if (! $this->exists) {
             throw new ModelNotFoundException();
-        }
-
-        $ancestorId = $this->getParentKey();
-
-        if (! $ancestorId) {
-            return $this->insertSelfClosure();
         }
 
         $descendantId = $this->getKey();
@@ -300,10 +294,6 @@ trait ClosureTable
             throw new ModelNotFoundException();
         }
 
-        if ($this->joinRelationSelf()->count() > 0) {
-            return true;
-        }
-
         $key = $this->getKey();
         $table = $this->getClosureTable();
         $ancestorColumn = $this->getAncestorColumn();
@@ -326,11 +316,25 @@ trait ClosureTable
         $query = "
             DELETE FROM {$table}
             WHERE {$descendantColumn} = {$key}
-            AND {$ancestorColumn} = {$key}
+            OR {$ancestorColumn} = {$key}
         ";
 
         DB::connection($this->connection)->delete($query);
         return true;
+    }
+
+    protected function deleteObservers()
+    {
+        if (! $this->exists) {
+            throw new ModelNotFoundException();
+        }
+        $children = $this->getChildren();
+        foreach ($children as $child) {
+            $child->setParentKey(0);
+            $child->save();
+        }
+        $this->detachRelationships();
+        $this->detachSelfRelation();
     }
 
     /**
@@ -378,7 +382,7 @@ trait ClosureTable
     /**
      * Associate self to ancestor and descendants to ancestor relations
      *
-     * @param null $parentKey
+     * @param int|null $parentKey
      * @return bool
      */
     protected function attachTreeTo($parentKey = 0)
@@ -389,10 +393,6 @@ trait ClosureTable
 
         if (is_null($parentKey)) {
             $parentKey = 0;
-        }
-
-        if ($this->joinRelationSelf()->count() === 0) {
-            $this->insertSelfClosure();
         }
 
         $key = $this->getKey();
@@ -423,10 +423,6 @@ trait ClosureTable
     {
         if (! $this->exists) {
             throw new ModelNotFoundException();
-        }
-
-        if ($this->joinRelationSelf()->count() === 0) {
-            return false;
         }
 
         $key = $this->getKey();
@@ -472,9 +468,6 @@ trait ClosureTable
     {
         if ($this->getParentKey()) {
             $parent = $this->parameter2Model($this->getParentKey());
-            if ($parent->joinRelationSelf()->count() === 0) {
-                return false;
-            }
             $parentKey = $parent->getKey();
         } else {
             $parentKey = 0;
@@ -537,22 +530,6 @@ trait ClosureTable
     }
 
     /**
-     * @return bool
-     */
-    public function attachSelf()
-    {
-        return $this->insertSelfClosure();
-    }
-
-    /**
-     * @return bool
-     */
-    public function detachSelf()
-    {
-        return $this->deleteRelationships();
-    }
-
-    /**
      * Create a child from Array
      *
      * @param array $attributes
@@ -583,7 +560,7 @@ trait ClosureTable
         }
         $this->setParentKey(0);
         $this->save();
-        return $this->insertSelfClosure() && $this->detachRelationships();
+        return true;
     }
 
     /**
@@ -691,7 +668,7 @@ trait ClosureTable
             return true;
         }
 
-        return $this->attachTreeTo($parent->getKey());
+        return $this->attachTreeTo($parent->getKey() ? : 0);
     }
 
     /**
