@@ -2,15 +2,20 @@
 
 优雅的树形数据结构管理包,基于`Closure Table`模式设计.
 
+ > 经过在实际应用中的反馈,大部分场合都需要`parent_id`列,
+ 1.x版本中虽有相应的添加`parent_id`列方法,
+ 操作过于繁琐.
+ 
+ > 基于实际应用和性能考虑,在2.0版本中数据表依赖`parent`列,这样既简单实用,又进一步减少了数据库查询，推荐使用.
+ 
 ## Features
 
 - 优雅的树形数据设计模式
-- 数据和结构分表,操作数据不影响结构
+- 最少的数据库查询
 - 一个Eloquent Trait简单操作
-- 无需修改表,兼容旧数据
-- 完善的树操作方法
+- 完善的树形结构操作方法
 - 支持生成树形数据
-- 支持多棵树并存(多个根)
+- 支持多个根存在
 - 支持节点/树修复
 - 支持软删除
 - ...
@@ -28,14 +33,14 @@
 `Closure Table`将树中每个节点与其后代节点的关系都存储了下来,
 这将需要一个存储相互关系的表`name_closure`.
 
-部门表:
+例如一个菜单表`menus`:
 
-|id|name
-|:-:|:-:|
-|1|总经理|
-|2|副总经理|
-|3|行政主管|
-|4|文秘|
+|id|name|parent|
+|:-:|:-:|:-:|
+|1|首页|0|
+|2|产品|1|
+|3|终端产品|2|
+|4|智能手机|3|
 
 一个基本的`closure`表包含`ancestor`,`descendant`,`distance`3个字段,如:
 
@@ -56,14 +61,14 @@
 
 ## 使用
 
-`ClosureTable`提供了大量方法操作树.
+`ClosureTable`提供了大量方法操作树结构.
 
 ### 影响树结构的方法
 
 ```php
 <?php
 
-$menu = Menu::find(10);
+$menu = Menu::find(2);
   
 // 将$menu作为根,return bool
 $menu->makeRoot();
@@ -71,10 +76,10 @@ $menu->makeRoot();
 // 创建一个子级节点,return new model
 $menu->createChild($attributes);
   
-// 创建一个新的菜单，此时该菜单无任何关联,return model
+// 创建一个新的菜单，该菜单为根(parent=0),return model
 $child = Menu::create($attributes);
   
-// 将一个已存在的菜单添加到子级,$child可为模型实例、模型实例集合或id、包含id的数组,return bool
+// 将一个已存在的菜单添加到子级,$child可为模型实例、集合或id、包含id的数组,return bool
 $menu->addChild($child);
 $menu->addChild(12);
 $menu->addChild('12');
@@ -85,9 +90,6 @@ $menu->moveTo($parent);
 $menu->moveTo(2); 
 $menu->moveTo('2');
   
-// 同moveTo()
-$menu->addTo($parent);
-  
 // 添加一个或多个同级节点,$siblings的后代也将随之移动,$siblings可为模型实例集合或id、包含id的数组,return bool
 $menu->addSibling($siblings);
 $menu->addSibling(2);
@@ -97,11 +99,6 @@ $menu->addSibling([2,3,4]);
 // 新建一个同级节点,return new model
 $menu->createSibling($attributes);
   
-// 建立一个自身的关联,return bool
-$menu->attachSelf();
-  
-// 解除自身的所有关联,并且解除后代的所有关联(这个操作不保留子树结构，将使自己和所有后代都成孤立状态),return bool
-$menu->detachSelf();
 ```
 
 ### 获取数据的方法
@@ -137,7 +134,7 @@ $menu->getSiblings();
 //获取所有兄弟姐妹包括自己,return model collection
 $menu->getSiblingsAndSelf();
   
-// 获取所有孤立节点
+// 获取所有孤立节点,孤立节点指在`closureTable`里没有的记录
 Menu::getIsolated();
   
 Menu::isolated()->where('id', '>', 5)->get();
@@ -157,14 +154,6 @@ Menu::getRoots();
 * 如果你想获取只包含单个或多个列的结果可以在`get...()`方法里传入参数,如:
 
   `$menu->getAncestors(['id','name']);`
-
-* 由于数据库不需要`parent_id`列,如果你想在结果中显示包含此列的内容可以在构造器后加入`withParent()`,如:
-
-  `$menu->queryDescendantsAndSelf()->withParent()->get()`.
-  
-  默认列名为`parent`,如果你想自定义这个列名在`model`里定义
-  
-  `protected $parentColunm = 'parent_id'`
 
 ### 生成树形数据的方法
 
@@ -221,6 +210,7 @@ $menu->getBesideTree();
   `$menu->getTree(['sortColumn', 'desc'], 'son', ['id', 'name']);`
 
 * 你的表里可能包含多棵树,如果你想一一获取他们可以这样做:
+
     ```php
     <?php
     
@@ -276,8 +266,9 @@ $menu->isBesideOf($beside);
 ```php
 $menu->delete();
 ```
-删除一条记录,这个操作将解除自身的所有关联,
-**并且解除后代的所有关联(这个操作不保留子树结构，将使所有后代都成孤立状态)**
+
+删除(包括软删除)一条记录,这个操作将解除自身的所有关联,
+**并且其`children`会成为根,这意味着`children`成立了自己的树.**
 
 **请勿使用以下方法来删除模型**
 
@@ -286,6 +277,8 @@ $menu->delete();
 `Menu::where('id', 1)->delete()`
 
 因为这些操作不会触发`deleting`事件
+
+> 软删除的恢复,同样恢复它在树中的位置.
 
 ### 结构维护
 
@@ -305,17 +298,30 @@ $menu->perfectNode();
 $menu->perfectTree();
 
 ```
-
+ > 此包还监听了`created`,`updating`,`restored`事件,
+ 这意味着如果你在修改`parent`同样能改变树结构.
+ 对于`Model::create()`方法，如果指定了`parent`效果同`$menu->createChild()`.
+ 
 ## 安装
 
 ```bash
 $ composer requrie jiaxincui/closure-table
 ```
 
-管理树需要新建一个`closure`关联表,如:`menu_closure`
+- `data`表必要列`id`,`parent`,
+
+- `closure`表必要列`ancestor`,`descendant`,`distance`
+
+示例:
 
 ```php
 <?php
+
+Schema::create('menus', function (Blueprint $table) {
+            $table->increments('id');
+            $table->string('name');
+            $table->unsignedTinyInteger('parent')->default(0);
+        });
 
 Schema::create('menu_closure', function (Blueprint $table) {
             $table->unsignedInteger('ancestor');
@@ -329,7 +335,7 @@ Schema::create('menu_closure', function (Blueprint $table) {
 
 2. 如果你想自定义关联表名和字段，可在`model`里定义以下属性:`$closureTable`,`$ancestorColumn`,`$descendantColumn`,`$distanceColumn`.
 
-3. 如果你想自定义生成的树形数据里`parent`字段,在`model`里定义属性`$parentColumn`.
+3. 如果你想自定义`parent`字段,在`model`里定义属性`$parentColumn`.
   
   如下示例:
 
@@ -357,7 +363,7 @@ class Menu extends Model
     // distance列名,默认'distance'
     protected $distanceColumn = 'distance';
       
-    // parent列名,默认'parent',此列是计算生成,不在数据库存储
+    // parent列名,默认'parent'
     protected $parentColumn = 'parent';
     
 }

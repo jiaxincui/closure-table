@@ -31,6 +31,10 @@ trait ClosureTable
         static::deleting(function (Model $model) {
             $model->deleteObservers();
         });
+
+        static::restored(function (Model $model) {
+            $model->insertClosure($model->getParentKey() ? : 0);
+        });
     }
 
     /**
@@ -638,17 +642,6 @@ trait ClosureTable
         $this->save();
 
         return true;
-    }
-
-    /**
-     * add to parent
-     *
-     * @param $parent
-     * @return bool
-     */
-    public function addTo($parent)
-    {
-        return $this->moveTo($parent);
     }
 
     /**
