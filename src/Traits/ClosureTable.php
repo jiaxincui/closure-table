@@ -20,7 +20,7 @@ trait ClosureTable
 
         static::updating(function (Model $model) {
             if ($model->isDirty($model->getParentColumn)) {
-                $model->moveNode();
+                $model->updateClosure();
             }
         });
 
@@ -257,7 +257,13 @@ trait ClosureTable
     protected function insertClosure()
     {
         if (! $this->exists) throw new ModelNotFoundException();
+
         $ancestorId = $this->getParentKey();
+
+        if (! $ancestorId) {
+            return $this->insertSelfClosure();
+        }
+
         $descendantId = $this->getKey();
         $table = $this->getClosureTable();
         $ancestorColumn = $this->getAncestorColumn();
@@ -440,7 +446,7 @@ trait ClosureTable
         return $model;
     }
 
-    protected function moveNode()
+    protected function updateClosure()
     {
         $parent = $this->parameter2Model($this->getParentKey());
 
