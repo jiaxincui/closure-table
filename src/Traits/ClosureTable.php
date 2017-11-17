@@ -32,9 +32,11 @@ trait ClosureTable
             $model->deleteObservers();
         });
 
-        static::restored(function (Model $model) {
-            $model->insertClosure($model->getParentKey() ? : 0);
-        });
+        if (method_exists(new static, 'restored')) {
+            static::restored(function (Model $model) {
+                $model->insertClosure($model->getParentKey() ? : 0);
+            });
+        }
     }
 
     /**
