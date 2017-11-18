@@ -12,7 +12,7 @@ use Jiaxincui\ClosureTable\Extensions\CollectionExtension;
 trait ClosureTable
 {
     /**
-     * Deleted Listener
+     * Eloquent Listener
      */
     public static function boot()
     {
@@ -32,11 +32,9 @@ trait ClosureTable
             $model->deleteObservers();
         });
 
-        if (method_exists(new static, 'restored')) {
-            static::restored(function (Model $model) {
-                $model->insertClosure($model->getParentKey() ? : 0);
-            });
-        }
+        static::restored(function (Model $model) {
+            $model->insertClosure($model->getParentKey() ? : 0);
+        });
     }
 
     /**
@@ -137,6 +135,24 @@ trait ClosureTable
     {
         return $this->getTable() . '.' . $this->getParentColumn();
     }
+
+    /**
+     * @return mixed
+     */
+    protected function getParentKey()
+    {
+        $parentColumn = $this->getParentColumn();
+        return $this->{$parentColumn};
+    }
+
+    /**
+     * @param $key
+     */
+    protected function setParentKey($key)
+    {
+        $this->attributes[$this->getParentColumn()] = $key;
+    }
+
     /**
      * Join closure table
      *
@@ -199,15 +215,6 @@ trait ClosureTable
             ->where($descendant, $key)
             ->where($distance, 0);
         return $query;
-    }
-
-    /**
-     * @return mixed
-     */
-    protected function getParentKey()
-    {
-        $parentColumn = $this->getParentColumn();
-        return $this->{$parentColumn};
     }
 
     /**
@@ -378,11 +385,6 @@ trait ClosureTable
 
         DB::connection($this->connection)->delete($query);
         return true;
-    }
-
-    protected function setParentKey($key)
-    {
-        $this->attributes[$this->getParentColumn()] = $key;
     }
 
     /**
