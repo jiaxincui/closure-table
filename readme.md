@@ -2,6 +2,7 @@
 
 优雅的树形数据结构管理包,基于`Closure Table`模式设计.
 
+**注意：2.1.0开始`getTree()方法返回的数据有所变化，加入一个`[]`包裹,以支持multi tree**
  > 经过在实际应用中的反馈,大部分场合都需要`parent_id`列,
  1.x版本中虽有相应的添加`parent_id`列方法,
  操作过于繁琐.
@@ -141,6 +142,9 @@ Menu::isolated()->where('id', '>', 5)->get();
   
 // 获取所有根
 Menu::getRoots();
+  
+// 一个scope,同getRoots()
+Menu::onlyRoot()->get();
 ```
 
 * 以上`get...()`方法都包含一个query构造器,如`getDescendants()`对应有一个`queryDescendants`,
@@ -169,6 +173,12 @@ $menu->getTree();
 // 当前节点作为根生成树,以sort字段排序,return tree
 $menu->getTree(['sortColumn', 'desc']);
   
+// 同上,return tree
+$menu->getDescendantsAndSelf()->toTree();
+  
+// 获取到以所有children为根的multi tree
+$menu->getDescendants()->toTree();
+  
 // 从根节点生成树,return tree
 $menu->getRoot()->getTree();
 
@@ -180,20 +190,22 @@ $menu->getBesideTree();
 ```php
 
 [
-    'id' => 3,
-    'name' => 'node3',
-    'children' => [
-        [
-            'id' => 4,
-            'name' => 'node4'
-        ],
-        [
-            'id' => 5,
-            'name' => 'node5'
-            'children' => [
-                [
-                    'id' => 6,
-                    'name' => 'node6'
+    [
+        'id' => 3,
+        'name' => 'node3',
+        'children' => [
+            [
+                'id' => 4,
+                'name' => 'node4'
+            ],
+            [
+                'id' => 5,
+                'name' => 'node5'
+                'children' => [
+                    [
+                        'id' => 6,
+                        'name' => 'node6'
+                    ]
                 ]
             ]
         ]
@@ -214,11 +226,7 @@ $menu->getBesideTree();
     ```php
     <?php
     
-    $multiTree = [];
-    $roots = Menu::getRoots();
-    foreach ($roots as $root) {
-        $multiTree[] = $root->getTree();
-    }
+    $multiTree = Menu::all()->toTree();
   
     var_dump($multiTree);
   
