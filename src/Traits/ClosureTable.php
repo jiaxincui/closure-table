@@ -948,10 +948,15 @@ trait ClosureTable
      */
     public function querySiblings()
     {
-        $parent = $this->getParent();
-        $key = $this->getKey();
-        $keyName = $this->getKeyName();
-        return $parent->queryChildren()->whereNotIn($keyName, [$key]);
+        if ($this->getParentKey()) {
+            $parent = $this->getParent();
+            $key = $this->getKey();
+            $keyName = $this->getKeyName();
+            return $parent->queryChildren()->whereNotIn($keyName, [$key]);
+        } else {
+            return self::onlyRoot();
+        }
+
     }
 
     /**
