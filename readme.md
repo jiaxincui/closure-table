@@ -313,7 +313,7 @@ $menu->perfectTree();
 ## 安装
 
 ```bash
-$ composer requrie jiaxincui/closure-table
+$ composer require jiaxincui/closure-table
 ```
 
 - `data`表必要列`id`,`parent`,
