@@ -899,6 +899,12 @@ trait ClosureTable
         $keyName = $this->getKeyName();
         $parentColumn = $this->getParentColumn();
 
+        if (in_array('*', $columns)) {
+            $columns = ['*'];
+        } elseif (! in_array($parentColumn, $columns)) {
+            array_push($columns, $parentColumn);
+        }
+
         if (! empty($sort)) {
             $sortKey = isset($sort[0]) ? $sort[0] : 'sort';
             $sortMode = isset($sort[1]) ? $sort[1]: 'asc';
@@ -927,6 +933,12 @@ trait ClosureTable
         }
         $keyName = $this->getKeyName();
         $parentColumn = $this->getParentColumn();
+
+        if (in_array('*', $columns)) {
+            $columns = ['*'];
+        } elseif (! in_array($parentColumn, $columns)) {
+            array_push($columns, $parentColumn);
+        }
 
         if (! empty($sort)) {
             $sortKey = isset($sort[0]) ? $sort[0] : 'sort';
