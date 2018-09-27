@@ -2,13 +2,6 @@
 
 优雅的树形数据结构管理包,基于`Closure Table`模式设计.
 
-**注意：2.1.0开始`getTree()方法返回的数据有所变化，加入一个`[]`包裹,以支持multi tree**
- > 经过在实际应用中的反馈,大部分场合都需要`parent_id`列,
- 1.x版本中虽有相应的添加`parent_id`列方法,
- 操作过于繁琐.
- 
- > 基于实际应用和性能考虑,在2.0版本中数据表依赖`parent`列,这样既简单实用,又进一步减少了数据库查询，推荐使用.
- 
 ## Features
 
 - 优雅的树形数据设计模式
@@ -77,7 +70,7 @@ $menu->makeRoot();
 // 创建一个子级节点,return new model
 $menu->createChild($attributes);
   
-// 创建一个新的菜单，该菜单为根(parent=0),return model
+// 创建一个新的菜单，该菜单为根('parent'默认为0,如果指定了'parent',效果同'createChild()'方法),return model
 $child = Menu::create($attributes);
   
 // 将一个已存在的菜单添加到子级,$child可为模型实例、集合或id、包含id的数组,return bool
@@ -101,7 +94,10 @@ $menu->addSibling([2,3,4]);
 $menu->createSibling($attributes);
   
 ```
+ > 此包还监听了`created`,`updating`,`restored`事件,
+ 这意味着如果你在修改`parent`列,同样能改变树结构.
 
+ 
 ### 获取数据的方法
 
 ```php
@@ -286,7 +282,7 @@ $menu->delete();
 
 因为这些操作不会触发`deleting`事件
 
-> 软删除的恢复,同样恢复它在树中的位置.
+> 支持软删除,软删除的恢复,同样恢复它在树中的位置.
 
 ### 结构维护
 
@@ -298,25 +294,22 @@ Menu::deleteRedundancies();
   
 $menu = Menu::find(20);
   
-// 修复此节点的关联
+// 修复此节点的关联, 慎用
 $menu->perfectNode();
   
 // 修复树关联,注意:这个操作将追朔到到根节点然后从根遍历整颗树调用perfectNode(),如果你的树很庞大将耗费大量资源,请慎用.
-// 替代方法是使用队列对每个节点perfectNode()
+// 解决方案是使用队列对每个节点perfectNode()
 $menu->perfectTree();
 
 ```
- > 此包还监听了`created`,`updating`,`restored`事件,
- 这意味着如果你在修改`parent`同样能改变树结构.
- 对于`Model::create()`方法，如果指定了`parent`效果同`$menu->createChild()`.
- 
+
 ## 安装
 
 ```bash
 $ composer require jiaxincui/closure-table
 ```
 
-- `data`表必要列`id`,`parent`,
+- 树形表中必要列`id`,`parent`,
 
 - `closure`表必要列`ancestor`,`descendant`,`distance`
 
