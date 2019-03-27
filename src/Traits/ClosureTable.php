@@ -98,10 +98,10 @@ trait ClosureTable
      */
     protected function getParentColumn()
     {
-        if (! isset($this->parentColunm)) {
+        if (! isset($this->parentColumn)) {
             return 'parent';
         }
-        return $this->parentColunm;
+        return $this->parentColumn;
     }
     /**
      * Get ancestor column with table name
