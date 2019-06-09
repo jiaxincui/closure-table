@@ -814,7 +814,14 @@ trait ClosureTable
      */
     public function getRoot(array $columns = ['*'])
     {
-        return $this->joinRelationBy('ancestor')->first($columns);
+        $parentColumn = $this->getParentColumn();
+        return $this
+            ->joinRelationBy('ancestor')
+            ->where($parentColumn, 0)
+            ->orWhere(function ($query) use ($parentColumn) {
+                $query->whereNull($parentColumn);
+            })
+            ->first($columns);
     }
 
     /**
