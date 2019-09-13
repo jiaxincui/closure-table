@@ -52,6 +52,16 @@ trait ClosureTable
         return $this->closureTable;
     }
 
+    protected function getPrefixedClosureTable()
+    {
+        return DB::connection($this->connection)->getTablePrefix() . $this->getClosureTable();
+    }
+
+    protected function getPrefixedTable()
+    {
+        return DB::connection($this->connection)->getTablePrefix() . $this->getTable();
+    }
+
     /**
      * Get this closure table ancestor column
      *
@@ -168,6 +178,7 @@ trait ClosureTable
             throw new ModelNotFoundException();
         }
 
+        $query = null;
         $keyName = $this->getQualifiedKeyName();
         $key = $this->getKey();
         $closureTable = $this->getClosureTable();
@@ -271,7 +282,7 @@ trait ClosureTable
      * Insert node relation to closure table
      *
      * @param int $ancestorId
-     * @return bool
+     * @return void
      */
     protected function insertClosure($ancestorId = 0)
     {
@@ -280,61 +291,43 @@ trait ClosureTable
         }
 
         $descendantId = $this->getKey();
-        $table = $this->getClosureTable();
+        $prefixedTable = $this->getPrefixedClosureTable();
         $ancestorColumn = $this->getAncestorColumn();
         $descendantColumn = $this->getDescendantColumn();
-        $distance = $this->getDistanceColumn();
+        $distanceColumn = $this->getDistanceColumn();
 
-        $query = "
-            INSERT INTO {$table} ({$ancestorColumn}, {$descendantColumn}, {$distance})
-            SELECT tbl.{$ancestorColumn}, {$descendantId}, tbl.{$distance}+1
-            FROM {$table} AS tbl
+        $sql = "
+            INSERT INTO {$prefixedTable} ({$ancestorColumn}, {$descendantColumn}, {$distanceColumn})
+            SELECT tbl.{$ancestorColumn}, {$descendantId}, tbl.{$distanceColumn}+1
+            FROM {$prefixedTable} AS tbl
             WHERE tbl.{$descendantColumn} = {$ancestorId}
-            UNION ALL
+            UNION
             SELECT {$descendantId}, {$descendantId}, 0
-            ON DUPLICATE KEY UPDATE {$distance} = VALUES ({$distance})
         ";
 
-        DB::connection($this->connection)->insert($query);
+        DB::connection($this->connection)->insert($sql);
     }
 
     /**
-     * Insert self relation to closure table
-     *
+     * @param null $with
      * @return bool
      */
-    protected function insertSelfClosure()
+    protected function detachSelfRelation($with = null)
     {
-        if (! $this->exists) {
-            throw new ModelNotFoundException();
+        $key = $this->getKey();
+        $table = $this->getClosureTable();
+        $ancestorColumn = $this->getAncestorColumn();
+        $descendantColumn = $this->getDescendantColumn();
+        switch ($with) {
+            case 'ancestor':
+                DB::table($table)->where($descendantColumn, $key)->delete();
+                break;
+            case 'descendant':
+                DB::table($table)->where($ancestorColumn, $key)->delete();
+                break;
+            default:
+                DB::table($table)->where($descendantColumn, $key)->orWhere($ancestorColumn, $key)->delete();
         }
-
-        $key = $this->getKey();
-        $table = $this->getClosureTable();
-        $ancestorColumn = $this->getAncestorColumn();
-        $descendantColumn = $this->getDescendantColumn();
-        $distance = $this->getDistanceColumn();
-        $query = "
-            INSERT INTO {$table} ({$ancestorColumn}, {$descendantColumn}, {$distance})
-            VALUES ({$key}, {$key}, 0)
-        ";
-        DB::connection($this->connection)->insert($query);
-        return true;
-    }
-
-    protected function detachSelfRelation()
-    {
-        $key = $this->getKey();
-        $table = $this->getClosureTable();
-        $ancestorColumn = $this->getAncestorColumn();
-        $descendantColumn = $this->getDescendantColumn();
-        $query = "
-            DELETE FROM {$table}
-            WHERE {$descendantColumn} = {$key}
-            OR {$ancestorColumn} = {$key}
-        ";
-
-        DB::connection($this->connection)->delete($query);
         return true;
     }
 
@@ -364,28 +357,28 @@ trait ClosureTable
         }
 
         $key = $this->getKey();
-        $table = $this->getClosureTable();
+        $prefixedTable = $this->getPrefixedClosureTable();
         $ancestorColumn = $this->getAncestorColumn();
         $descendantColumn = $this->getDescendantColumn();
 
-        $query = "
-            DELETE FROM {$table}
+        $sql = "
+            DELETE FROM {$prefixedTable}
             WHERE {$descendantColumn} IN (
               SELECT d FROM (
-                SELECT {$descendantColumn} as d FROM {$table}
+                SELECT {$descendantColumn} as d FROM {$prefixedTable}
                 WHERE {$ancestorColumn} = {$key}
               ) as dct
             )
             AND {$ancestorColumn} IN (
               SELECT a FROM (
-                SELECT {$ancestorColumn} AS a FROM {$table}
+                SELECT {$ancestorColumn} AS a FROM {$prefixedTable}
                 WHERE {$descendantColumn} = {$key}
                 AND {$ancestorColumn} <> {$key}
               ) as ct
             )
         ";
 
-        DB::connection($this->connection)->delete($query);
+        DB::connection($this->connection)->delete($sql);
         return true;
     }
 
@@ -406,21 +399,19 @@ trait ClosureTable
         }
 
         $key = $this->getKey();
-        $table = $this->getClosureTable();
-        $ancestor = $this->getAncestorColumn();
-        $descendant = $this->getDescendantColumn();
-        $distance = $this->getDistanceColumn();
-        $query = "
-            INSERT INTO {$table} ({$ancestor}, {$descendant}, {$distance})
-            SELECT supertbl.{$ancestor}, subtbl.{$descendant}, supertbl.{$distance}+subtbl.{$distance}+1
-            FROM {$table} as supertbl
-            CROSS JOIN {$table} as subtbl
-            WHERE supertbl.{$descendant} = {$parentKey}
-            AND subtbl.{$ancestor} = {$key}
-            ON DUPLICATE KEY UPDATE {$distance} = VALUES ({$distance})
+        $prefixedTable = $this->getPrefixedClosureTable();
+        $ancestorColumn = $this->getAncestorColumn();
+        $descendantColumn = $this->getDescendantColumn();
+        $distanceColumn = $this->getDistanceColumn();
+
+        $sql = "
+            INSERT INTO {$prefixedTable} ({$ancestorColumn}, {$descendantColumn}, {$distanceColumn})
+            SELECT supertbl.{$ancestorColumn}, subtbl.{$descendantColumn}, supertbl.{$distanceColumn}+subtbl.{$distanceColumn}+1
+            FROM (SELECT * FROM {$prefixedTable} WHERE {$descendantColumn} = {$parentKey}) as supertbl
+            JOIN {$prefixedTable} as subtbl ON subtbl.{$ancestorColumn} = {$key}
         ";
 
-        DB::connection($this->connection)->insert($query);
+        DB::connection($this->connection)->insert($sql);
         return true;
     }
 
@@ -436,20 +427,20 @@ trait ClosureTable
         }
 
         $key = $this->getKey();
-        $closureTable = $this->getClosureTable();
+        $prefixedTable = $this->getPrefixedClosureTable();
         $ancestorColumn = $this->getAncestorColumn();
         $descendantColumn = $this->getDescendantColumn();
-        $query = "
-            DELETE FROM {$closureTable}
+        $sql = "
+            DELETE FROM {$prefixedTable}
             WHERE {$descendantColumn} IN (
             SELECT d FROM (
-              SELECT {$descendantColumn} as d FROM {$closureTable}
+              SELECT {$descendantColumn} as d FROM {$prefixedTable}
                 WHERE {$ancestorColumn} = {$key}
               ) as dct
             )
         ";
 
-        DB::connection($this->connection)->delete($query);
+        DB::connection($this->connection)->delete($sql);
         return true;
     }
 
@@ -474,6 +465,10 @@ trait ClosureTable
         return $model;
     }
 
+    /**
+     * @throws ClosureTableException
+     * @throws \Throwable
+     */
     protected function updateClosure()
     {
         if ($this->getParentKey()) {
@@ -511,16 +506,16 @@ trait ClosureTable
         if (method_exists($instance, 'bootSoftDeletes')) {
             $segment = 'OR t.'.$instance->getDeletedAtColumn().' IS NOT NULL';
         }
-        $table = $instance->getTable();
-        $closureTable = $instance->getClosureTable();
+        $table = $instance->getPrefixedTable();
+        $prefixedTable = $instance->getPrefixedClosureTable();
         $ancestorColumn = $instance->getAncestorColumn();
         $descendantColumn = $instance->getDescendantColumn();
         $keyName = $instance->getKeyName();
-        $query = "
-            DELETE ct FROM {$closureTable} ct
+        $sql = "
+            DELETE ct FROM {$prefixedTable} ct
             WHERE {$descendantColumn} IN (
               SELECT d FROM (
-                SELECT {$descendantColumn} as d FROM {$closureTable}
+                SELECT {$descendantColumn} as d FROM {$prefixedTable}
                 LEFT JOIN {$table} t 
                 ON {$descendantColumn} = t.{$keyName}
                 WHERE t.{$keyName} IS NULL {$segment}
@@ -528,14 +523,14 @@ trait ClosureTable
             )
             OR {$ancestorColumn} IN (
               SELECT d FROM (
-                SELECT {$ancestorColumn} as d FROM {$closureTable}
+                SELECT {$ancestorColumn} as d FROM {$prefixedTable}
                 LEFT JOIN {$table} t 
                 ON {$ancestorColumn} = t.{$keyName}
                 WHERE t.{$keyName} IS NULL {$segment}
               ) as act
             )
         ";
-        DB::connection($instance->connection)->delete($query);
+        DB::connection($instance->connection)->delete($sql);
         return true;
     }
 
@@ -554,7 +549,7 @@ trait ClosureTable
 
         $parentKey = $this->getKey();
         $attributes[$this->getParentColumn()] = $parentKey;
-        $model = $this->create($attributes);
+        $model = $this->forceCreate($attributes);
         return $model;
     }
 
@@ -579,6 +574,7 @@ trait ClosureTable
      * @param $children
      * @return bool
      * @throws ClosureTableException
+     * @throws \Throwable
      */
     public function addChild($children)
     {
@@ -619,7 +615,7 @@ trait ClosureTable
 
         $parentKey = $this->getParent()->getKey();
         $attributes[$this->getParentColumn()] = $parentKey;
-        $model = $this->create($attributes);
+        $model = $this->forceCreate($attributes);
         return $model;
     }
 
@@ -639,7 +635,6 @@ trait ClosureTable
     /**
      * @param $parent
      * @return bool
-     * @throws ClosureTableException
      */
     public function moveTo($parent)
     {
@@ -654,20 +649,16 @@ trait ClosureTable
      * fix the model to ancestors relation. If you need to fix all, cycle all
      *
      * @return bool
+     * @throws \Throwable
      */
     public function perfectNode()
     {
-        if ($this->isRoot()) {
-            return true;
-        }
-        $parent = $this->getParent();
-
-        if (is_null($parent)) {
-            $this->makeRoot();
-            return true;
-        }
-
-        return $this->attachTreeTo($parent->getKey() ? : 0);
+        $parentKey = $this->getParentKey() ? : 0;
+        DB::connection($this->connection)->transaction(function () use ($parentKey) {
+            $this->detachSelfRelation('ancestor');
+            $this->insertClosure($parentKey);
+        });
+        return true;
     }
 
     /**
@@ -703,7 +694,7 @@ trait ClosureTable
      */
     public function getAncestors(array $columns = ['*'])
     {
-        return $this->queryAncestors()->orderBy('distance', 'desc')->get($columns);
+        return $this->queryAncestors()->get($columns);
     }
 
     /**
