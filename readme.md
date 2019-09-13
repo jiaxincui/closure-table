@@ -17,7 +17,7 @@
 ## 依赖
 
 - php > 5.6.0
-- laravel > 5.4.0
+- laravel ~5.0|~6.0
 - mysql > 5.1.0
 
 ## 关于`Closure Table`
@@ -25,16 +25,18 @@
 > Closure table is a simple and elegant way of storing and querying hierarchical data in any RDBMS. By hierarchical data we mean a set of data that has some parent – child relationship among them. We use the word ‘tree’ instead of hierarchies commonly. As an example we may take the relationships between geographic locations like ‘Countries’, ‘States/ Province’, ‘Districts/ Cities’ etc.
 
 `Closure Table`将树中每个节点与其后代节点的关系都存储了下来,
-这将需要一个存储相互关系的表`name_closure`.
+这将需要一个存储节点关系的表`xxx_closure`.
 
 例如一个菜单表`menus`:
 
 |id|name|parent|
 |:-:|:-:|:-:|
-|1|首页|0|
-|2|产品|1|
-|3|终端产品|2|
-|4|智能手机|3|
+|1|A|0|
+|2|AA|1|
+|3|AB|1|
+|4|AAA|2|
+|5|ABA|3|
+|6|ABAA|5|
 
 一个基本的`closure`表包含`ancestor`,`descendant`,`distance`3个字段,如:
 
@@ -42,16 +44,21 @@
 |:-:|:-:|:-:|
 |1|1|0|
 |1|2|1|
-|1|3|2|
-|1|4|3|
+|1|3|1|
+|1|4|2|
+|1|5|2|
+|1|6|3|
 |2|2|0|
-|2|3|1|
-|2|4|2|
+|2|4|1|
 |3|3|0|
-|3|4|1|
+|3|5|1|
+|3|6|2|
 |4|4|0|
+|5|5|0|
+|5|6|1|
+|6|6|0|
 
-这个表记录了每个部门之间的关系,并且还记录了一条自身的关联.
+这个表记录了每个节点之间的关系,并且还记录了一条自身的关联,如：`1,1,0`.
 
 ## 使用
 
@@ -70,21 +77,21 @@ $menu->makeRoot();
 // 创建一个子级节点,return new model
 $menu->createChild($attributes);
   
-// 创建一个新的菜单，该菜单为根('parent'默认为0,如果指定了'parent',效果同'createChild()'方法),return model
+// 创建一个新的节点，该节点为根,也可以指定列 parent,它将自动维护树结构.,return new model
 $child = Menu::create($attributes);
   
-// 将一个已存在的菜单添加到子级,$child可为模型实例、集合或id、包含id的数组,return bool
+// 将一个已存在的节点添加到子级,$child参数可以是模型实例/集合/id/包含id的数组,return bool
 $menu->addChild($child);
 $menu->addChild(12);
 $menu->addChild('12');
 $menu->addChild([3, 4, 5]);
   
-// 移动到$parent的下级,后代也将随之移动,$parent可为模型实例或id,return bool
+// 移动到$parent的下级,后代也将随之移动,$parent参数可以是模型实例/id,return bool
 $menu->moveTo($parent);
 $menu->moveTo(2); 
 $menu->moveTo('2');
   
-// 添加一个或多个同级节点,$siblings的后代也将随之移动,$siblings可为模型实例集合或id、包含id的数组,return bool
+// 添加一个或多个同级节点,$siblings的后代也将随之移动,$siblings可以是模型实例/集合/id/包含id的数组,return bool
 $menu->addSibling($siblings);
 $menu->addSibling(2);
 $menu->addSibling('2');
@@ -94,8 +101,8 @@ $menu->addSibling([2,3,4]);
 $menu->createSibling($attributes);
   
 ```
- > 此包还监听了`created`,`updating`,`restored`事件,
- 这意味着如果你在修改`parent`列,同样能改变树结构.
+ > 它监听了`created`,`updating`,`restored`事件,如果你使用了 `create()`,或对实例使用了 `update(), restore()` 它将自动维护树结构.
+ 这意味着如果你在修改`parent`列,它将自动维护树结构.
 
  
 ### 获取数据的方法
@@ -143,13 +150,15 @@ Menu::getRoots();
 Menu::onlyRoot()->get();
 ```
 
-* 以上`get...()`方法都包含一个query构造器,如`getDescendants()`对应有一个`queryDescendants`,
+* 以上`get...()`方法都包含一个query构造器,如`getDescendants()`对应有一个`queryDescendants()`,
 
-  这使得你可以在查询中加入条件查询或排序你可以这样使用
+  这使得你可以在查询中加入更多条件或 'orderBy',
+  
+  你可以这样使用
   
   `$menu->queryDescendants()->where('id', '>', 5)->orderBy('sort','desc')->get();`
   
-  > `getRoot()`,`getParent()`,`getRoots()`,`getIsolated()`4个方法没有query构造器
+  > 注意 `getRoot()`,`getParent()`,`getRoots()`,`getIsolated()`4个方法没有query构造器
 
 * 如果你想获取只包含单个或多个列的结果可以在`get...()`方法里传入参数,如:
 
@@ -265,14 +274,15 @@ $menu->isBesideOf($beside);
 
 ### 删除操作
 
-`ClosureTable`监听了模型的`deleting`事件
+`ClosureTable` 监听了模型的 `deleting` 事件
 
 ```php
 $menu->delete();
 ```
 
 删除(包括软删除)一条记录,这个操作将解除自身的所有关联,
-**并且其`children`会成为根,这意味着`children`成立了自己的树.**
+
+**并且其 `children` 会成为根,这意味着所有的 `children` 成立了自己的树.**
 
 **请勿使用以下方法来删除模型**
 
@@ -282,7 +292,7 @@ $menu->delete();
 
 因为这些操作不会触发`deleting`事件
 
-> 支持软删除,软删除的恢复,同样恢复它在树中的位置.
+> 支持软删除,软删除的 `restore()`, 会根据它的 `parent` 列的记录恢复至相应的位置，你不需要去关心 `closure` 表里的记录，它已经帮你做了.
 
 ### 结构维护
 
@@ -294,11 +304,11 @@ Menu::deleteRedundancies();
   
 $menu = Menu::find(20);
   
-// 修复此节点的关联, 慎用
+// 修复此节点的关联, 它将重新建立 `closure` 表里的记录
 $menu->perfectNode();
   
 // 修复树关联,注意:这个操作将追朔到到根节点然后从根遍历整颗树调用perfectNode(),如果你的树很庞大将耗费大量资源,请慎用.
-// 解决方案是使用队列对每个节点perfectNode()
+// 解决方案是使用队列对每个节点使用 perfectNode()
 $menu->perfectTree();
 
 ```
@@ -309,9 +319,9 @@ $menu->perfectTree();
 $ composer require jiaxincui/closure-table
 ```
 
-- 树形表中必要列`id`,`parent`,
+- 你的模型中必要的列 `id`,`parent`,
 
-- `closure`表必要列`ancestor`,`descendant`,`distance`
+- `closure` 表必要的列 `ancestor`,`descendant`,`distance`
 
 示例:
 
@@ -321,7 +331,7 @@ $ composer require jiaxincui/closure-table
 Schema::create('menus', function (Blueprint $table) {
             $table->increments('id');
             $table->string('name');
-            $table->unsignedTinyInteger('parent')->default(0);
+            $table->unsignedInteger('parent')->default(0);
         });
 
 Schema::create('menu_closure', function (Blueprint $table) {
@@ -332,11 +342,11 @@ Schema::create('menu_closure', function (Blueprint $table) {
         });
 ```
 
-1. 在`model`里use trait `Jiaxincui\ClosureTable\Traits\ClosureTable`.
+1. 在`model`里引入 trait `Jiaxincui\ClosureTable\Traits\ClosureTable`.
 
-2. 如果你想自定义关联表名和字段，可在`model`里定义以下属性:`$closureTable`,`$ancestorColumn`,`$descendantColumn`,`$distanceColumn`.
+2. (非必要)如果你想自定义关联表名和字段，可在`model`里定义以下属性:`$closureTable`,`$ancestorColumn`,`$descendantColumn`,`$distanceColumn`.
 
-3. 如果你想自定义`parent`字段,在`model`里定义属性`$parentColumn`.
+3. (非必要)如果你想自定义`parent`字段,在`model`里定义属性`$parentColumn`.
   
   如下示例:
 
@@ -350,21 +360,22 @@ use Jiaxincui\ClosureTable\Traits\ClosureTable;
 
 class Menu extends Model
 {
+    // (必要)引入ClosureTable.
     use ClosureTable;
  
-    // 关联表名，默认'Model类名+_closure',如'menu_closure'
+    // (非必要)关联表名，默认'Model类名+_closure',如'menu_closure'
     protected $closureTable = 'menu_closure';
       
-    // ancestor列名,默认'ancestor'
+    // (非必要)ancestor列名,默认'ancestor'
     protected $ancestorColumn = 'ancestor';
       
-    // descendant列名,默认'descendant'
+    // (非必要)descendant列名,默认'descendant'
     protected $descendantColumn = 'descendant';
       
-    // distance列名,默认'distance'
+    // (非必要)distance列名,默认'distance'
     protected $distanceColumn = 'distance';
       
-    // parent列名,默认'parent'
+    // (非必要)parent列名,默认'parent'
     protected $parentColumn = 'parent';
     
 }
