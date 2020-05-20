@@ -547,6 +547,7 @@ trait ClosureTable
             throw new ClosureTableException('Model is not a node');
         }
 
+        $model = null;
         $parentKey = $this->getKey();
         $attributes[$this->getParentColumn()] = $parentKey;
         $model = $this->forceCreate($attributes);
@@ -613,6 +614,7 @@ trait ClosureTable
             throw new ClosureTableException('Model is not a node');
         }
 
+        $model = null;
         $parentKey = $this->getParent()->getKey();
         $attributes[$this->getParentColumn()] = $parentKey;
         $model = $this->forceCreate($attributes);
@@ -756,8 +758,7 @@ trait ClosureTable
         $keyName = $this->getKeyName();
         $descendant = $this->getQualifiedDescendantColumn();
         $ids = $this->getDescendantsAndSelf([$keyName])->pluck($keyName)->toArray();
-        $root = $this->getRoot() ? : $this;
-        return $root
+        return $this->getRoot()
             ->joinRelationBy('descendant', true)
             ->whereNotIn($descendant, $ids);
     }
@@ -805,6 +806,9 @@ trait ClosureTable
      */
     public function getRoot(array $columns = ['*'])
     {
+        if ($this->isRoot()) {
+            return $this;
+        }
         $parentColumn = $this->getParentColumn();
         return $this
             ->joinRelationBy('ancestor')
