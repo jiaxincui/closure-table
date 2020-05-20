@@ -17,14 +17,14 @@
 ## 依赖
 
 - php > 5.6.0
-- laravel ~5.0|~6.0
+- laravel ~5.0|~6.0|~7.0
 - mysql > 5.1.0
 
 ## 关于`Closure Table`
 
 > Closure table is a simple and elegant way of storing and querying hierarchical data in any RDBMS. By hierarchical data we mean a set of data that has some parent – child relationship among them. We use the word ‘tree’ instead of hierarchies commonly. As an example we may take the relationships between geographic locations like ‘Countries’, ‘States/ Province’, ‘Districts/ Cities’ etc.
 
-`Closure Table`将树中每个节点与其后代节点的关系都存储了下来,
+`Closure Table`将树中每个节点与其后代节点的关系存储在数据库中,
 这将需要一个存储节点关系的表`xxx_closure`.
 
 例如一个菜单表`menus`:
@@ -77,7 +77,7 @@ $menu->makeRoot();
 // 创建一个子级节点,return new model
 $menu->createChild($attributes);
   
-// 创建一个新的节点，该节点为根,也可以指定列 parent,它将自动维护树结构.,return new model
+// 创建一个新的节点，该节点为根（如果未指定parent）,也可以指定列 parent,它将自动维护树结构.,return new model
 $child = Menu::create($attributes);
   
 // 将一个已存在的节点添加到子级,$child参数可以是模型实例/集合/id/包含id的数组,return bool
@@ -86,12 +86,12 @@ $menu->addChild(12);
 $menu->addChild('12');
 $menu->addChild([3, 4, 5]);
   
-// 移动到$parent的下级,后代也将随之移动,$parent参数可以是模型实例/id,return bool
+// 移动到$parent的下级,它的所有下级节点也将随之移动,$parent参数可以是模型实例/id,return bool
 $menu->moveTo($parent);
 $menu->moveTo(2); 
 $menu->moveTo('2');
   
-// 添加一个或多个同级节点,$siblings的后代也将随之移动,$siblings可以是模型实例/集合/id/包含id的数组,return bool
+// 添加一个或多个同级节点,$siblings的所有下级节点也将随之移动,$siblings可以是模型实例/集合/id/包含id的数组,return bool
 $menu->addSibling($siblings);
 $menu->addSibling(2);
 $menu->addSibling('2');
@@ -102,7 +102,7 @@ $menu->createSibling($attributes);
   
 ```
  > 它监听了`created`,`updating`,`restored`事件,如果你使用了 `create()`,或对实例使用了 `update(), restore()` 它将自动维护树结构.
- 这意味着如果你在修改`parent`列,它将自动维护树结构.
+ 这意味着如果你在修改`parent`列,它也会自动维护树结构.
 
  
 ### 获取数据的方法
@@ -126,21 +126,22 @@ $menu->getAncestorsAndSelf();
 // 获取所有儿女(直接下级),return model collection
 $menu->getChildren();
   
-// 获取父辈(直接上级),return model
+// 获取上级节点,return model
 $menu->getParent();
   
-// 获取祖先(根),return model
+// 获取根（根节点返回本身）,return model
 $menu->getRoot();
 
-// 获取所有兄弟姐妹,return model collection
+// 获取所有同级节点, return model collection
 $menu->getSiblings();
   
-//获取所有兄弟姐妹包括自己,return model collection
+//获取所有同级节点并包括本身,return model collection
 $menu->getSiblingsAndSelf();
   
-// 获取所有孤立节点,孤立节点指在`closureTable`里没有的记录
+// 获取所有孤立节点（孤立节点指在没有在 closureTable 表里维护的记录）
 Menu::getIsolated();
-  
+
+// 使用范围查询孤立节点  
 Menu::isolated()->where('id', '>', 5)->get();
   
 // 获取所有根
@@ -150,9 +151,9 @@ Menu::getRoots();
 Menu::onlyRoot()->get();
 ```
 
-* 以上`get...()`方法都包含一个query构造器,如`getDescendants()`对应有一个`queryDescendants()`,
+* 以上`getXxx()`方法都包含一个query构造器,如`getDescendants()`对应有一个`queryDescendants()`,
 
-  这使得你可以在查询中加入更多条件或 'orderBy',
+  这使得你可以在查询中加入更多条件如：orderBy,
   
   你可以这样使用
   
@@ -160,7 +161,7 @@ Menu::onlyRoot()->get();
   
   > 注意 `getRoot()`,`getParent()`,`getRoots()`,`getIsolated()`4个方法没有query构造器
 
-* 如果你想获取只包含单个或多个列的结果可以在`get...()`方法里传入参数,如:
+* 如果你想获取只包含单个或多个字段的结果可以在`getXxx()`方法里传入参数,如:
 
   `$menu->getAncestors(['id','name']);`
 
@@ -282,7 +283,7 @@ $menu->delete();
 
 删除(包括软删除)一条记录,这个操作将解除自身的所有关联,
 
-**并且其 `children` 会成为根,这意味着所有的 `children` 成立了自己的树.**
+**并且其所有 `children` 会成为根（parent = 0）,这意味着所有的 `children` 成立了自己的树.**
 
 **请勿使用以下方法来删除模型**
 
