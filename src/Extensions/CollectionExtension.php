@@ -14,15 +14,13 @@ class CollectionExtension extends Collection
      */
     public function toTree($primary = 'id', $parent = 'parent', $children = 'children')
     {
-        $data = $this->toArray();
-        if (! isset($data[0][$parent])) {
+        if (!key_exists($parent, $this->first()->toArray())) {
             return [];
         }
-        $items = array();
-        foreach ($data as $v) {
-            $items[$v[$primary]] = $v;
-        }
-        $tree = array();
+        $items = $this->mapWithKeys(function ($item) use ($primary) {
+            return [$item[$primary] => $item];
+        })->toArray();
+        $tree = [];
         foreach ($items as $item) {
             if (isset($items[$item[$parent]])) {
                 $items[$item[$parent]][$children][] = &$items[$item[$primary]];
