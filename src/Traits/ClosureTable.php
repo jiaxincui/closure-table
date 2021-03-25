@@ -801,22 +801,15 @@ trait ClosureTable
     }
 
     /**
-     * @param array $columns
-     * @return mixed
+     * @param array|string[] $columns
+     * @return $this
      */
     public function getRoot(array $columns = ['*'])
     {
         if ($this->isRoot()) {
             return $this;
         }
-        $parentColumn = $this->getParentColumn();
-        return $this
-            ->joinRelationBy('ancestor')
-            ->where($parentColumn, 0)
-            ->orWhere(function ($query) use ($parentColumn) {
-                $query->whereNull($parentColumn);
-            })
-            ->first($columns);
+        return $this->joinRelationBy('ancestor')->first($columns);
     }
 
     /**
