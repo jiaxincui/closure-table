@@ -17,7 +17,7 @@
 ## 依赖
 
 - php > 5.6.0
-- laravel ~5.0|~6.0|~7.0
+- laravel ~5.0|~6.0|~7.0|~8.0
 - mysql > 5.1.0
 
 ## 关于`Closure Table`
