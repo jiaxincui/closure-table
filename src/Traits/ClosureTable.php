@@ -14,10 +14,8 @@ trait ClosureTable
     /**
      * Eloquent Listener
      */
-    public static function boot()
+    public static function bootClosureTable()
     {
-        parent::boot();
-
         static::updating(function (Model $model) {
             if ($model->isDirty($model->getParentColumn())) {
                 $model->updateClosure();
