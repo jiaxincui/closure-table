@@ -1,5 +1,5 @@
 {
-    "name": "jiaxincui/closure-table",
+    "name": "hihuangwei/closure-table",
     "version": "2.1.15",
     "description": "A closure table tree package for laravel eloquent",
     "keywords": ["laravel", "tree", "closure-table", "eloquent", "laravel-tree"],
