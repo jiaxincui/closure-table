@@ -17,17 +17,17 @@
 ## 依赖
 
 - php > 5.6.0
-- laravel ~5.0|~6.0|~7.0|~8.0
+- laravel 5.0 - 11.0
 - mysql > 5.1.0
 
-## 关于`Closure Table`
+## 关于 `Closure Table`
 
 > Closure table is a simple and elegant way of storing and querying hierarchical data in any RDBMS. By hierarchical data we mean a set of data that has some parent – child relationship among them. We use the word ‘tree’ instead of hierarchies commonly. As an example we may take the relationships between geographic locations like ‘Countries’, ‘States/ Province’, ‘Districts/ Cities’ etc.
 
-`Closure Table`将树中每个节点与其后代节点的关系存储在数据库中,
-这将需要一个存储节点关系的表`xxx_closure`.
+`Closure Table` 将树中每个节点与其后代节点的关系存储在数据库中,
+这将需要一个存储节点关系的表 `xxx_closure`.
 
-例如一个菜单表`menus`:
+例如一个菜单表 `menus`:
 
 |id|name|parent|
 |:-:|:-:|:-:|
@@ -38,7 +38,7 @@
 |5|ABA|3|
 |6|ABAA|5|
 
-一个基本的`closure`表包含`ancestor`,`descendant`,`distance`3个字段,如:
+一个基本的 `closure` 表包含 `ancestor` ,`descendant` , `distance` 3个字段,如:
 
 |ancestor|descendant|distance|
 |:-:|:-:|:-:|
@@ -62,7 +62,7 @@
 
 ## 使用
 
-`ClosureTable`提供了大量方法操作树结构.
+`ClosureTable` 提供了大量方法操作树结构.
 
 ### 影响树结构的方法
 
@@ -101,8 +101,8 @@ $menu->addSibling([2,3,4]);
 $menu->createSibling($attributes);
   
 ```
- > 它监听了`created`,`updating`,`restored`事件,如果你使用了 `create()`,或对实例使用了 `update(), restore()` 它将自动维护树结构.
- 这意味着如果你在修改`parent`列,它也会自动维护树结构.
+ > 它监听了 `created`,`updating`,`restored` 事件,如果你使用了 `create()`,或对实例使用了 `update(), restore()` 它将自动维护树结构.
+ 这意味着如果你正在修改 `parent` 列,它也会自动维护树结构.
 
  
 ### 获取数据的方法
@@ -151,23 +151,24 @@ Menu::getRoots();
 Menu::onlyRoot()->get();
 ```
 
-* 以上`getXxx()`方法都包含一个query构造器,如`getDescendants()`对应有一个`queryDescendants()`,
+* 以上 `getXxx()` 方法都包含一个query构造器,如 `getDescendants() `对应有一个 `queryDescendants()`,
 
-  这使得你可以在查询中加入更多条件如：orderBy,
+  这使得你可以在查询中加入更多条件如：`orderBy`,
   
   你可以这样使用
   
   `$menu->queryDescendants()->where('id', '>', 5)->orderBy('sort','desc')->get();`
   
-  > 注意 `getRoot()`,`getParent()`,`getRoots()`,`getIsolated()`4个方法没有query构造器
+  > 注意 `getRoot()`,`getParent()`,`getRoots()`,`getIsolated()` 4个方法没有query构造器
 
-* 如果你想获取只包含单个或多个字段的结果可以在`getXxx()`方法里传入参数,如:
+* 如果你想获取只包含单个或多个字段的结果可以在 `getXxx()` 方法里传入参数,如:
 
   `$menu->getAncestors(['id','name']);`
 
 ### 生成树形数据的方法
 
 提供多种方法生成树形数据,可从任意节点生成树
+
 ```php
 <?php
 
@@ -219,11 +220,13 @@ $menu->getBesideTree();
 ]
 ```
 
-* 生成的树`children`键默认为`children`,如果你想自定义可以作为第2个参数传入,如:
+* 生成的树 `children` 键默认为 `children` ,如果你想自定义可以作为第2个参数传入,如:
 
   `$menu->getTree(['sortColumn', 'desc'], 'son');`
+  
+  其中 `sortColumn` 是排序的列， `desc` 是排序方法
 
-  如果你想获取只包含单个或多个列的结果可以作为第3个参数传入,如:
+* 如果你想获取只包含单个或多个列的结果可以作为第3个参数传入,如:
 
   `$menu->getTree(['sortColumn', 'desc'], 'son', ['id', 'name']);`
 
@@ -254,22 +257,22 @@ $menu->isLeaf();
 // 是否孤立节点
 $menu->isIsolated();
   
-// 是否$descendant的上级
+// 是否某的上级
 $menu->isAncestorOf($descendant);
   
-// 是否$ancestor的下级
+// 是否某的下级
 $menu->isDescendantOf($ancestor);
   
-// 是否$parent的直接下级
+// 是否某的直接下级
 $menu->isChildOf($parent);
   
-// 是否$child的直接上级
+// 是否某的直接上级
 $menu->isParentOf($child);
   
-// 是否$sibling的同级(同一个上级)
+// 是否某的同级(同一个上级)
 $menu->isSiblingOf($sibling);
   
-// 如果$beside不是自己也不是自己的后代返回true
+// 如果$beside不是自己，也不是自己的后代返回true
 $menu->isBesideOf($beside);
 ```
 
@@ -320,9 +323,9 @@ $menu->perfectTree();
 $ composer require jiaxincui/closure-table
 ```
 
-- 你的模型中必要的列 `id`,`parent`,
+- 你的模型中必要的列 `id`,`parent`, 当然你也可以在模型中自定义这些列（见后面章节）
 
-- `closure` 表必要的列 `ancestor`,`descendant`,`distance`
+- `closure` 表必要的列 `ancestor`,`descendant`,`distance`， 如有必要你也可以自定义（见后面章节）
 
 示例:
 
