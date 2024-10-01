@@ -16,9 +16,11 @@
 
 ## 依赖
 
-- php > 5.6.0
-- laravel 5.0 - 11.0
+- php > 8.0
+- laravel 9.0 - 11.0
 - mysql > 5.1.0
+
+> `laravel < 9.0` ，请使用 `2.1.x` 版本
 
 ## 关于 `Closure Table`
 
@@ -77,27 +79,22 @@ $menu->makeRoot();
 // 创建一个子级节点,return new model
 $menu->createChild($attributes);
   
-// 创建一个新的节点，该节点为根（如果未指定parent）,也可以指定列 parent,它将自动维护树结构.,return new model
+// 创建一个新的节点，该节点为根（如果未指定 parent 列）
 $child = Menu::create($attributes);
   
-// 将一个已存在的节点添加到子级,$child参数可以是模型实例/集合/id/包含id的数组,return bool
+// 将一个已存在的节点添加到子级,$child参数可以是模型实例/id,return void
 $menu->addChild($child);
 $menu->addChild(12);
-$menu->addChild('12');
-$menu->addChild([3, 4, 5]);
   
-// 移动到$parent的下级,它的所有下级节点也将随之移动,$parent参数可以是模型实例/id,return bool
+// 移动到$parent的下级,它的所有下级节点也将随之移动,$parent参数可以是模型实例/id,return void
 $menu->moveTo($parent);
 $menu->moveTo(2); 
-$menu->moveTo('2');
   
-// 添加一个或多个同级节点,$siblings的所有下级节点也将随之移动,$siblings可以是模型实例/集合/id/包含id的数组,return bool
-$menu->addSibling($siblings);
+// 添加一个或多个同级节点,$sibling的所有下级节点也将随之移动,$siblings可以是模型实例/id,return void
+$menu->addSibling($sibling);
 $menu->addSibling(2);
-$menu->addSibling('2');
-$menu->addSibling([2,3,4]);
   
-// 新建一个同级节点,return new model
+// 新建一个同级节点,return Model
 $menu->createSibling($attributes);
   
 ```
@@ -111,47 +108,41 @@ $menu->createSibling($attributes);
 <?php
 $menu = Menu::find(3);
   
-// 获取所有后代,return model collection
+// 获取所有后代,返回列表
 $menu->getDescendants();
   
-// 获取所有后代,包括自己,return model collection
+// 获取所有后代,包括自己,返回列表
 $menu->getDescendantsAndSelf();
  
- // 获取所有祖先,return model collection
+ // 获取所有祖先,返回列表
 $menu->getAncestors();
   
-// 获取所有祖先,包括自己,return model collection
+// 获取所有祖先,包括自己,返回列表
 $menu->getAncestorsAndSelf();
   
-// 获取所有儿女(直接下级),return model collection
+// 获取所有儿女(直接下级),返回列表
 $menu->getChildren();
-  
-// 获取上级节点,return model
+
+// 获取上级节点,返回单个实例
 $menu->getParent();
   
-// 获取根（根节点返回本身）,return model
+// 获取根（根节点返回本身）,返回单个实例
 $menu->getRoot();
 
-// 获取所有同级节点, return model collection
+// 获取所有同级节点, 返回列表
 $menu->getSiblings();
   
-//获取所有同级节点并包括本身,return model collection
+//获取所有同级节点并包括本身,返回列表
 $menu->getSiblingsAndSelf();
-  
-// 获取所有孤立节点（孤立节点指在没有在 closureTable 表里维护的记录）
-Menu::getIsolated();
 
-// 使用范围查询孤立节点  
-Menu::isolated()->where('id', '>', 5)->get();
+// 获取所有孤立节点（孤立节点指在没有在 closureTable 表里维护的记录）
+Menu::onlyIsolated()->get();
   
-// 获取所有根
-Menu::getRoots();
-  
-// 一个scope,同getRoots()
+// 获取所有根, 返回列表
 Menu::onlyRoot()->get();
 ```
 
-* 以上 `getXxx()` 方法都包含一个query构造器,如 `getDescendants() `对应有一个 `queryDescendants()`,
+* 以上 `getXxx()` 方法都包含一个 query 构造器,如 `getDescendants() `对应有一个 `queryDescendants()`,
 
   这使得你可以在查询中加入更多条件如：`orderBy`,
   
@@ -159,11 +150,12 @@ Menu::onlyRoot()->get();
   
   `$menu->queryDescendants()->where('id', '>', 5)->orderBy('sort','desc')->get();`
   
-  > 注意 `getRoot()`,`getParent()`,`getRoots()`,`getIsolated()` 4个方法没有query构造器
+  > 注意 `getRoot()`,`getParent()` 2个方法没有 query 构造器
 
 * 如果你想获取只包含单个或多个字段的结果可以在 `getXxx()` 方法里传入参数,如:
 
   `$menu->getAncestors(['id','name']);`
+
 
 ### 生成树形数据的方法
 

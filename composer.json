@@ -1,6 +1,6 @@
 {
     "name": "jiaxincui/closure-table",
-    "version": "2.1.14",
+    "version": "3.0.0",
     "description": "A closure table tree package for laravel eloquent",
     "keywords": ["laravel", "tree", "closure-table", "eloquent", "laravel-tree"],
     "type": "library",
@@ -18,8 +18,9 @@
     },
     "minimum-stability": "stable",
     "require": {
-        "illuminate/database": "^5.0|^6.20.26|^7.0|^8.0|^9.0|^10.0|^11.0",
-        "illuminate/support": "^5.0|^6.0|^7.0|^8.0|^9.0|^10.0|^11.0"
+        "php": ">=8.0",
+        "illuminate/database": "^9.0|^10.0|^11.0",
+        "illuminate/support": "^^9.0|^10.0|^11.0"
     },
     "autoload": {
         "psr-4": {
