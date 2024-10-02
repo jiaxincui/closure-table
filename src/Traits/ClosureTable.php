@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Jiaxincui\ClosureTable\Exceptions\ClosureTableException;
@@ -21,27 +20,27 @@ trait ClosureTable
     /**
      * Eloquent Listener
      */
-    public static function boot()
+    public static function boot(): void
     {
         parent::boot();
 
-        static::updating(function (Model $model) {
+        static::updating(function (self $model) {
             if ($model->isDirty($model->getParentColumn())) {
                 $model->updateClosure();
             }
         });
 
-        static::created(function (Model $model) {
-            $model->insertClosure($model->getParentKey() ?: 0);
+        static::created(function (self $model) {
+            $model->insertClosure($model->getParentKey());
         });
 
-        static::deleting(function (Model $model) {
+        static::deleting(function (self $model) {
             $model->deleteObservers();
         });
 
         if (method_exists(new static, 'restored')) {
-            static::restored(function (Model $model) {
-                $model->insertClosure($model->getParentKey() ?: 0);
+            static::restored(function (self $model) {
+                $model->insertClosure($model->getParentKey());
             });
         }
     }
@@ -51,7 +50,7 @@ trait ClosureTable
      *
      * @return string
      */
-    protected function getClosureTable()
+    protected function getClosureTable(): string
     {
         return $this->closureTable ?? str_replace('\\', '', Str::snake(class_basename($this))) . '_closure';
     }
@@ -59,7 +58,7 @@ trait ClosureTable
     /**
      * @return string
      */
-    protected function getPrefixedClosureTable()
+    protected function getPrefixedClosureTable(): string
     {
         return DB::connection($this->connection)->getTablePrefix() . $this->getClosureTable();
     }
@@ -67,7 +66,7 @@ trait ClosureTable
     /**
      * @return string
      */
-    protected function getPrefixedTable()
+    protected function getPrefixedTable(): string
     {
         return DB::connection($this->connection)->getTablePrefix() . $this->getTable();
     }
@@ -77,7 +76,7 @@ trait ClosureTable
      *
      * @return string
      */
-    protected function getAncestorColumn()
+    protected function getAncestorColumn(): string
     {
         return $this->ancestorColumn ?? 'ancestor';
     }
@@ -87,7 +86,7 @@ trait ClosureTable
      *
      * @return string
      */
-    protected function getDescendantColumn()
+    protected function getDescendantColumn(): string
     {
         return $this->descendantColumn ?? 'descendant';
     }
@@ -97,7 +96,7 @@ trait ClosureTable
      *
      * @return string
      */
-    protected function getDistanceColumn()
+    protected function getDistanceColumn(): string
     {
         return $this->distanceColumn ?? 'distance';
     }
@@ -107,7 +106,7 @@ trait ClosureTable
      *
      * @return string
      */
-    protected function getParentColumn()
+    protected function getParentColumn(): string
     {
         return $this->parentColumn ?? 'parent';
     }
@@ -117,7 +116,7 @@ trait ClosureTable
      *
      * @return string
      */
-    protected function getQualifiedAncestorColumn()
+    protected function getQualifiedAncestorColumn(): string
     {
         return $this->getClosureTable() . '.' . $this->getAncestorColumn();
     }
@@ -127,7 +126,7 @@ trait ClosureTable
      *
      * @return string
      */
-    protected function getQualifiedDescendantColumn()
+    protected function getQualifiedDescendantColumn(): string
     {
         return $this->getClosureTable() . '.' . $this->getDescendantColumn();
     }
@@ -137,7 +136,7 @@ trait ClosureTable
      *
      * @return string
      */
-    protected function getQualifiedDistanceColumn()
+    protected function getQualifiedDistanceColumn(): string
     {
         return $this->getClosureTable() . '.' . $this->getDistanceColumn();
     }
@@ -145,24 +144,24 @@ trait ClosureTable
     /**
      * @return string
      */
-    protected function getQualifiedParentColumn()
+    protected function getQualifiedParentColumn(): string
     {
         return $this->getTable() . '.' . $this->getParentColumn();
     }
 
     /**
-     * @return string
+     * @return mixed
      */
-    protected function getParentKey()
+    protected function getParentKey(): mixed
     {
         return $this->getAttribute($this->getParentColumn());
     }
 
     /**
-     * @param string $key
+     * @param int|string|null $key
      * @return void
      */
-    protected function setParentKey(string $key)
+    protected function setParentKey(int|string|null $key): void
     {
         $this->attributes[$this->getParentColumn()] = $key;
     }
@@ -174,7 +173,7 @@ trait ClosureTable
      * @param bool $withSelf
      * @return Builder
      */
-    protected function joinRelationBy(string $column, bool $withSelf = false)
+    protected function joinRelationBy(string $column, bool $withSelf = false): Builder
     {
         if (!$this->exists) {
             throw new ModelNotFoundException();
@@ -209,7 +208,7 @@ trait ClosureTable
      * Get self relation
      * @return Builder
      */
-    protected function joinRelationSelf()
+    protected function joinRelationSelf(): Builder
     {
         if (!$this->exists) {
             throw new ModelNotFoundException();
@@ -233,7 +232,7 @@ trait ClosureTable
      *
      * @return Builder
      */
-    protected function joinWithoutClosure()
+    protected function joinWithoutClosure(): Builder
     {
         $keyName = $this->getQualifiedKeyName();
 
@@ -249,10 +248,10 @@ trait ClosureTable
     /**
      * Insert node relation to closure table
      *
-     * @param int $ancestorId
+     * @param int|string|null $ancestorId
      * @return void
      */
-    protected function insertClosure(int $ancestorId = 0)
+    protected function insertClosure(int|string|null $ancestorId = null): void
     {
         if (!$this->exists) {
             throw new ModelNotFoundException();
@@ -268,19 +267,19 @@ trait ClosureTable
             INSERT INTO {$prefixedTable} ({$ancestorColumn}, {$descendantColumn}, {$distanceColumn})
             SELECT tbl.{$ancestorColumn}, {$descendantId}, tbl.{$distanceColumn}+1
             FROM {$prefixedTable} AS tbl
-            WHERE tbl.{$descendantColumn} = {$ancestorId}
+            WHERE tbl.{$descendantColumn} = ?
             UNION
             SELECT {$descendantId}, {$descendantId}, 0
         ";
 
-        DB::connection($this->connection)->insert($sql);
+        DB::connection($this->connection)->insert($sql, array($ancestorId));
     }
 
     /**
      * @param string|null $with
      * @return void
      */
-    protected function detachSelfRelation(string $with = null)
+    protected function detachSelfRelation(string $with = null): void
     {
         $key = $this->getKey();
         $table = $this->getClosureTable();
@@ -301,14 +300,14 @@ trait ClosureTable
     /**
      * @return void
      */
-    protected function deleteObservers()
+    protected function deleteObservers(): void
     {
         if (!$this->exists) {
             throw new ModelNotFoundException();
         }
         $children = $this->getChildren();
         foreach ($children as $child) {
-            $child->setParentKey(0);
+            $child->setParentKey(null);
             $child->save();
         }
         $this->detachRelationships();
@@ -320,7 +319,7 @@ trait ClosureTable
      *
      * @return void
      */
-    protected function detachRelationships()
+    protected function detachRelationships(): void
     {
         if (!$this->exists) {
             throw new ModelNotFoundException();
@@ -354,10 +353,10 @@ trait ClosureTable
     /**
      * Associate self to ancestor and descendants to ancestor relations
      *
-     * @param int $parentKey
+     * @param int|string|null $parentKey
      * @return void
      */
-    protected function attachTreeTo(int $parentKey = 0)
+    protected function attachTreeTo(int|string|null $parentKey = null): void
     {
         if (!$this->exists) {
             throw new ModelNotFoundException();
@@ -372,11 +371,11 @@ trait ClosureTable
         $sql = "
             INSERT INTO {$prefixedTable} ({$ancestorColumn}, {$descendantColumn}, {$distanceColumn})
             SELECT supertbl.{$ancestorColumn}, subtbl.{$descendantColumn}, supertbl.{$distanceColumn}+subtbl.{$distanceColumn}+1
-            FROM (SELECT * FROM {$prefixedTable} WHERE {$descendantColumn} = {$parentKey}) as supertbl
+            FROM (SELECT * FROM {$prefixedTable} WHERE {$descendantColumn} = ?) as supertbl
             JOIN {$prefixedTable} as subtbl ON subtbl.{$ancestorColumn} = {$key}
         ";
 
-        DB::connection($this->connection)->insert($sql);
+        DB::connection($this->connection)->insert($sql, array($parentKey));
     }
 
     /**
@@ -384,7 +383,7 @@ trait ClosureTable
      *
      * @return void
      */
-    protected function deleteRelationships()
+    protected function deleteRelationships(): void
     {
         if (!$this->exists) {
             throw new ModelNotFoundException();
@@ -410,11 +409,11 @@ trait ClosureTable
     /**
      * Convert parameter
      *
-     * @param int|Model $parameter
+     * @param int|string|Model $parameter
      * @return Model|static
      * @throws ModelNotFoundException
      */
-    protected function parameter2Model(int|Model $parameter)
+    protected function parameter2Model(int|string|Model $parameter): Model|static
     {
         if ($parameter instanceof Model) {
             return $parameter;
@@ -426,15 +425,14 @@ trait ClosureTable
      * @return void
      * @throws ClosureTableException|Throwable
      */
-    protected function updateClosure()
+    protected function updateClosure(): void
     {
-        if ($this->getParentKey()) {
-            $parent = $this->parameter2Model($this->getParentKey());
-            $parentKey = $parent->getKey();
-        } else {
-            $parentKey = 0;
+        if (is_null($this->getParentKey())) {
+            return;
         }
 
+        $parent = $this->parameter2Model($this->getParentKey());
+        $parentKey = $parent->getKey();
         $ids = $this->getDescendantsAndSelf([$this->getKeyName()])->pluck($this->getKeyName())->toArray();
 
         if (in_array($parentKey, $ids)) {
@@ -455,7 +453,7 @@ trait ClosureTable
      *
      * @return void
      */
-    public static function deleteRedundancies()
+    public static function deleteRedundancies(): void
     {
         $instance = new static;
 
@@ -497,12 +495,11 @@ trait ClosureTable
      * @return Model
      * @throws ClosureTableException
      */
-    public function createChild(array $attributes)
+    public function createChild(array $attributes): Model
     {
         if ($this->joinRelationSelf()->count() === 0) {
             throw new ClosureTableException('Model is not a node');
         }
-
         $parentKey = $this->getKey();
         $attributes[$this->getParentColumn()] = $parentKey;
         return $this->newQuery()->forceCreate($attributes);
@@ -513,24 +510,24 @@ trait ClosureTable
      *
      * @return void
      */
-    public function makeRoot()
+    public function makeRoot(): void
     {
         if ($this->isRoot()) {
             return;
         }
-        $this->setParentKey(0);
+        $this->setParentKey(null);
         $this->save();
     }
 
     /**
      * Associate a child or children to this model, accept model and int
      *
-     * @param int|Model $child
+     * @param int|string|Model $child
      * @return void
      * @throws ClosureTableException
      * @throws Throwable
      */
-    public function addChild(int|Model $child)
+    public function addChild(int|string|Model $child): void
     {
         if ($this->joinRelationSelf()->count() === 0) {
             throw new ClosureTableException('Model is not a node');
@@ -553,7 +550,7 @@ trait ClosureTable
      * @return Model
      * @throws ClosureTableException
      */
-    public function createSibling(array $attributes)
+    public function createSibling(array $attributes): Model
     {
         if ($this->joinRelationSelf()->count() === 0) {
             throw new ClosureTableException('Model is not a node');
@@ -565,11 +562,11 @@ trait ClosureTable
     }
 
     /**
-     * @param int|Model $sibling
+     * @param int|string|Model $sibling
      * @return void
      * @throws ClosureTableException|Throwable
      */
-    public function addSibling(int|Model $sibling)
+    public function addSibling(int|string|Model $sibling): void
     {
         $parent = $this->getParent();
         if (!$parent) {
@@ -579,10 +576,10 @@ trait ClosureTable
     }
 
     /**
-     * @param int|Model $parent
+     * @param int|string|Model $parent
      * @return void
      */
-    public function moveTo(int|Model $parent)
+    public function moveTo(int|string|Model $parent): void
     {
         $model = $this->parameter2Model($parent);
         $this->setParentKey($model->getKey());
@@ -595,9 +592,9 @@ trait ClosureTable
      * @return void
      * @throws Throwable
      */
-    public function perfectNode()
+    public function perfectNode(): void
     {
-        $parentKey = $this->getParentKey() ?: 0;
+        $parentKey = $this->getParentKey();
         DB::connection($this->connection)->transaction(function () use ($parentKey) {
             $this->detachSelfRelation('ancestor');
             $this->insertClosure($parentKey);
@@ -609,7 +606,7 @@ trait ClosureTable
      *
      * @return void
      */
-    public function perfectTree()
+    public function perfectTree(): void
     {
         $this->getDescendants()->each(function ($item) {
             $item->perfectNode();
@@ -621,7 +618,7 @@ trait ClosureTable
      *
      * @return Builder
      */
-    public function queryAncestors()
+    public function queryAncestors(): Builder
     {
         return $this->joinRelationBy('ancestor');
     }
@@ -630,7 +627,7 @@ trait ClosureTable
      * @param array $columns
      * @return Collection
      */
-    public function getAncestors(array $columns = ['*'])
+    public function getAncestors(array $columns = ['*']): Collection
     {
         return $this->queryAncestors()->get($columns);
     }
@@ -638,7 +635,7 @@ trait ClosureTable
     /**
      * @return Builder
      */
-    public function queryAncestorsAndSelf()
+    public function queryAncestorsAndSelf(): Builder
     {
         return $this->joinRelationBy('ancestor', true);
     }
@@ -647,7 +644,7 @@ trait ClosureTable
      * @param array $columns
      * @return Collection
      */
-    public function getAncestorsAndSelf(array $columns = ['*'])
+    public function getAncestorsAndSelf(array $columns = ['*']): Collection
     {
         return $this->queryAncestorsAndSelf()->get($columns);
     }
@@ -655,7 +652,7 @@ trait ClosureTable
     /**
      * @return Builder
      */
-    public function queryDescendants()
+    public function queryDescendants(): Builder
     {
         return $this->joinRelationBy('descendant');
     }
@@ -664,7 +661,7 @@ trait ClosureTable
      * @param array $columns
      * @return Collection
      */
-    public function getDescendants(array $columns = ['*'])
+    public function getDescendants(array $columns = ['*']): Collection
     {
         return $this->queryDescendants()->get($columns);
     }
@@ -672,7 +669,7 @@ trait ClosureTable
     /**
      * @return Builder
      */
-    public function queryDescendantsAndSelf()
+    public function queryDescendantsAndSelf(): Builder
     {
         return $this->joinRelationBy('descendant', true);
     }
@@ -681,7 +678,7 @@ trait ClosureTable
      * @param array $columns
      * @return Collection
      */
-    public function getDescendantsAndSelf(array $columns = ['*'])
+    public function getDescendantsAndSelf(array $columns = ['*']): Collection
     {
         return $this->queryDescendantsAndSelf()->get($columns);
     }
@@ -689,12 +686,16 @@ trait ClosureTable
     /**
      * @return Builder
      */
-    public function queryBesides()
+    public function queryBesides(): Builder
     {
+        $root = $this->getRoot();
+        if (is_null($root)) {
+            return $this->newQuery()->whereNull($this->getKeyName());
+        }
         $keyName = $this->getKeyName();
         $descendant = $this->getQualifiedDescendantColumn();
         $ids = $this->getDescendantsAndSelf([$keyName])->pluck($keyName)->toArray();
-        return $this->getRoot()
+        return $root
             ->joinRelationBy('descendant', true)
             ->whereNotIn($descendant, $ids);
     }
@@ -703,7 +704,7 @@ trait ClosureTable
      * @param array $columns
      * @return Collection
      */
-    public function getBesides(array $columns = ['*'])
+    public function getBesides(array $columns = ['*']): Collection
     {
         return $this->queryBesides()->get($columns);
     }
@@ -711,7 +712,7 @@ trait ClosureTable
     /**
      * @return Builder
      */
-    public function queryChildren()
+    public function queryChildren(): Builder
     {
         $key = $this->getKey();
         return $this->newQuery()->where($this->getParentColumn(), $key);
@@ -721,65 +722,59 @@ trait ClosureTable
      * @param array $columns
      * @return Collection
      */
-    public function getChildren(array $columns = ['*'])
+    public function getChildren(array $columns = ['*']): Collection
     {
         return $this->queryChildren()->get($columns);
     }
 
     /**
      * @param array $columns
-     * @return Model|static|null
+     * @return Model|null
      */
-    public function getParent(array $columns = ['*'])
+    public function getParent(array $columns = ['*']): ?Model
     {
         $parentKey = $this->getParentKey();
-        return $this->newQuery()->find($parentKey, $columns);
+        return empty($parentKey) ? null : $this->newQuery()->find($parentKey, $columns);
     }
 
     /**
      * @param array $columns
-     * @return static|null
+     * @return Model|null
      */
-    public function getRoot(array $columns = ['*'])
+    public function getRoot(array $columns = ['*']): ?Model
     {
-        if ($this->isRoot()) {
-            return $this;
-        }
         $parentColumn = $this->getParentColumn();
         return $this
             ->joinRelationBy('ancestor')
-            ->where($parentColumn, 0)
-            ->orWhere(function ($query) use ($parentColumn) {
-                $query->whereNull($parentColumn);
-            })
+            ->whereNull($parentColumn)
             ->first($columns);
     }
 
     /**
-     * @param Model|int $child
+     * @param int|string|Model $child
      * @return bool
      */
-    public function isParentOf($child)
+    public function isParentOf(Model|int|string $child): bool
     {
         $model = $this->parameter2Model($child);
-        return $this->getKey() === $model->getParentKey();
+        return !is_null($model->getParentKey()) && $this->getKey() === $model->getParentKey();
     }
 
     /**
-     * @param Model|int $parent
+     * @param int|string|Model $parent
      * @return bool
      */
-    public function isChildOf($parent)
+    public function isChildOf(Model|int|string $parent): bool
     {
         $model = $this->parameter2Model($parent);
-        return $model->getKey() === $this->getParentKey();
+        return !is_null($this->getParentKey()) && $model->getKey() === $this->getParentKey();
     }
 
     /**
-     * @param Model|int $descendant
+     * @param int|string|Model $descendant
      * @return bool
      */
-    public function isAncestorOf($descendant)
+    public function isAncestorOf(Model|int|string $descendant): bool
     {
         $keyName = $this->getKeyName();
         $model = $this->parameter2Model($descendant);
@@ -788,10 +783,10 @@ trait ClosureTable
     }
 
     /**
-     * @param Model|int $beside
+     * @param int|string|Model $beside
      * @return bool
      */
-    public function isBesideOf($beside)
+    public function isBesideOf(Model|int|string $beside): bool
     {
         if ($this->isRoot()) {
             return false;
@@ -803,10 +798,10 @@ trait ClosureTable
     }
 
     /**
-     * @param Model|int $ancestor
+     * @param int|string|Model $ancestor
      * @return bool
      */
-    public function isDescendantOf($ancestor)
+    public function isDescendantOf(Model|int|string $ancestor): bool
     {
         $keyName = $this->getKeyName();
         $model = $this->parameter2Model($ancestor);
@@ -815,10 +810,10 @@ trait ClosureTable
     }
 
     /**
-     * @param Model|int $sibling
+     * @param int|string|Model $sibling
      * @return bool
      */
-    public function isSiblingOf($sibling)
+    public function isSiblingOf(Model|int|string $sibling): bool
     {
         $keyName = $this->getKeyName();
         $model = $this->parameter2Model($sibling);
@@ -832,7 +827,7 @@ trait ClosureTable
      * @param array $columns
      * @return array
      */
-    public function getTree(array $sort = [], string $childrenColumn = 'children', array $columns = ['*'])
+    public function getTree(array $sort = [], string $childrenColumn = 'children', array $columns = ['*']): array
     {
         $keyName = $this->getKeyName();
         $parentColumn = $this->getParentColumn();
@@ -864,7 +859,7 @@ trait ClosureTable
      * @param array $columns
      * @return array
      */
-    public function getBesideTree(array $sort = [], string $childrenColumn = 'children', array $columns = ['*'])
+    public function getBesideTree(array $sort = [], string $childrenColumn = 'children', array $columns = ['*']): array
     {
         if ($this->isRoot()) {
             return [];
@@ -896,24 +891,18 @@ trait ClosureTable
     /**
      * @return Builder
      */
-    public function querySiblings()
+    public function querySiblings(): Builder
     {
-        if ($this->getParentKey()) {
-            $parent = $this->getParent();
-            $key = $this->getKey();
-            $keyName = $this->getKeyName();
-            return $parent->queryChildren()->whereNotIn($keyName, [$key]);
-        } else {
-            return self::onlyRoot();
-        }
-
+        $key = $this->getKey();
+        $keyName = $this->getQualifiedKeyName();
+        return $this->querySiblingsAndSelf()->where($keyName, '!=', $key);
     }
 
     /**
      * @param array $columns
      * @return Collection
      */
-    public function getSiblings(array $columns = ['*'])
+    public function getSiblings(array $columns = ['*']): Collection
     {
         return $this->querySiblings()->get($columns);
     }
@@ -921,17 +910,17 @@ trait ClosureTable
     /**
      * @return Builder
      */
-    public function querySiblingsAndSelf()
+    public function querySiblingsAndSelf(): Builder
     {
         $parent = $this->getParent();
-        return $parent->queryChildren();
+        return is_null($parent) ? static::onlyRoot(): $parent->queryChildren();
     }
 
     /**
      * @param array $columns
      * @return Collection
      */
-    public function getSiblingsAndSelf(array $columns = ['*'])
+    public function getSiblingsAndSelf(array $columns = ['*']): Collection
     {
         return $this->querySiblingsAndSelf()->get($columns);
     }
@@ -941,17 +930,17 @@ trait ClosureTable
      *
      * @return bool
      */
-    public function isRoot()
+    public function isRoot(): bool
     {
-        return !$this->getParentKey();
+        return is_null($this->getParentKey());
     }
 
     /**
-     * This model is leaf
+     * This model is leafed
      *
      * @return bool
      */
-    public function isLeaf()
+    public function isLeaf(): bool
     {
         return $this->queryChildren()->count() === 0;
     }
@@ -959,7 +948,7 @@ trait ClosureTable
     /**
      * @return bool
      */
-    public function isIsolated()
+    public function isIsolated(): bool
     {
         $key = $this->getKey();
         $keyName = $this->getKeyName();
@@ -970,7 +959,7 @@ trait ClosureTable
     /**
      * @return Builder
      */
-    public static function onlyIsolated()
+    public static function onlyIsolated(): Builder
     {
         $instance = new static;
         $keyName = $instance->getQualifiedKeyName();
@@ -986,22 +975,19 @@ trait ClosureTable
     /**
      * @return Builder
      */
-    public static function onlyRoot()
+    public static function onlyRoot(): Builder
     {
         $instance = new static;
         $parentColumn = $instance->getParentColumn();
         return $instance->newQuery()
-            ->where($parentColumn, 0)
-            ->orWhere(function ($query) use ($parentColumn) {
-                $query->whereNull($parentColumn);
-            });
+            ->whereNull($parentColumn);
     }
 
     /**
      * @param array $models
      * @return CollectionExtension
      */
-    public function newCollection(array $models = [])
+    public function newCollection(array $models = []): CollectionExtension
     {
         return new CollectionExtension($models);
     }

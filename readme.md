@@ -20,7 +20,9 @@
 - laravel 9.0 - 11.0
 - mysql > 5.1.0
 
-> `laravel < 9.0` ，请使用 `2.1.x` 版本
+**3.0 版本进行了重大更新，加入了字符串ID (如uuid等) 的支持、使用了更安全的SQL语、更规范的方法签名等**
+
+**`laravel < 9.0` ，请使用 `2.1.x` 版本**
 
 ## 关于 `Closure Table`
 
@@ -32,8 +34,8 @@
 例如一个菜单表 `menus`:
 
 |id|name|parent|
-|:-:|:-:|:-:|
-|1|A|0|
+|:-:|:-:|::|
+|1|A|null|
 |2|AA|1|
 |3|AB|1|
 |4|AAA|2|
@@ -123,10 +125,10 @@ $menu->getAncestorsAndSelf();
 // 获取所有儿女(直接下级),返回列表
 $menu->getChildren();
 
-// 获取上级节点,返回单个实例
+// 获取上级节点,返回单个实例/null
 $menu->getParent();
   
-// 获取根（根节点返回本身）,返回单个实例
+// 获取根（根节点返回本身）,返回单个实例/null
 $menu->getRoot();
 
 // 获取所有同级节点, 返回列表
@@ -166,22 +168,22 @@ Menu::onlyRoot()->get();
 
 $menu = Menu::find(3);
   
-// 从当前节点生成树,return tree
+// 从当前节点生成树,return tree array
 $menu->getTree();
   
-// 当前节点作为根生成树,以sort字段排序,return tree
+// 当前节点作为根生成树,以sort字段排序,return array tree
 $menu->getTree(['sortColumn', 'desc']);
   
-// 同上,return tree
+// 同上,return tree array
 $menu->getDescendantsAndSelf()->toTree();
   
-// 获取到以所有children为根的multi tree
+// 获取到以所有children为根的multi tree array
 $menu->getDescendants()->toTree();
   
-// 从根节点生成树,return tree
+// 从根节点生成树,return tree array
 $menu->getRoot()->getTree();
 
-//旁树,不包含自己和下级,return tree
+//旁树,不包含自己和下级,return tree array
 $menu->getBesideTree();
 ```
 
@@ -317,7 +319,7 @@ $ composer require jiaxincui/closure-table
 
 - 你的模型中必要的列 `id`,`parent`, 当然你也可以在模型中自定义这些列（见后面章节）
 
-- `closure` 表必要的列 `ancestor`,`descendant`,`distance`， 如有必要你也可以自定义（见后面章节）
+- `closure` 表必需的列 `ancestor`,`descendant`,`distance`， 如有必要你也可以自定义（见后面章节）
 
 示例:
 
@@ -327,7 +329,9 @@ $ composer require jiaxincui/closure-table
 Schema::create('menus', function (Blueprint $table) {
             $table->increments('id');
             $table->string('name');
-            $table->unsignedInteger('parent')->default(0);
+            // parent 列允许为 null，因为根节点的 parent 为 null，
+            // ！！！根节点的 parent 一定为 null，请勿自定义为其它值
+            $table->unsignedInteger('parent')->nullable();
         });
 
 Schema::create('menu_closure', function (Blueprint $table) {
@@ -340,9 +344,9 @@ Schema::create('menu_closure', function (Blueprint $table) {
 
 1. 在`model`里引入 trait `Jiaxincui\ClosureTable\Traits\ClosureTable`.
 
-2. (非必要)如果你想自定义关联表名和字段，可在`model`里定义以下属性:`$closureTable`,`$ancestorColumn`,`$descendantColumn`,`$distanceColumn`.
+2. (非必需)如果你想自定义关联表名和字段，可在`model`里定义以下属性:`$closureTable`,`$ancestorColumn`,`$descendantColumn`,`$distanceColumn`.
 
-3. (非必要)如果你想自定义`parent`字段,在`model`里定义属性`$parentColumn`.
+3. (非必需)如果你想自定义`parent`字段,在`model`里定义属性`$parentColumn`.
   
   如下示例:
 
