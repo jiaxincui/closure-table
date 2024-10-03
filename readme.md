@@ -33,14 +33,14 @@
 
 例如一个菜单表 `menus`:
 
-|id|name|parent|
-|:-:|:-:|::|
-|1|A|null|
-|2|AA|1|
-|3|AB|1|
-|4|AAA|2|
-|5|ABA|3|
-|6|ABAA|5|
+|id|name| parent |
+|:-:|:-:|:----:|
+|1|A|  null |
+|2|AA|   1  |
+|3|AB|   1  |
+|4|AAA|   2  |
+|5|ABA|   3  |
+|6|ABAA|   5  |
 
 一个基本的 `closure` 表包含 `ancestor` ,`descendant` , `distance` 3个字段,如:
 
