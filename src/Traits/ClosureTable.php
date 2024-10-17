@@ -20,9 +20,9 @@ trait ClosureTable
     /**
      * Eloquent Listener
      */
-    public static function boot(): void
+    public static function booted(): void
     {
-        parent::boot();
+        parent::booted();
 
         static::updating(function (self $model) {
             if ($model->isDirty($model->getParentColumn())) {
