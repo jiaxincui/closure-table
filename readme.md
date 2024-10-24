@@ -22,6 +22,8 @@
 
 **3.0 版本进行了重大更新，加入了字符串ID (如uuid等) 的支持、使用了更安全的SQL语、更规范的方法签名等**
 
+**3.0 版本更改了根节点的 `parent` 列，之前默认使用 `0`, 3.0版本默认使用 `null`， 如果你准备从3.0以下版本升级，需要更新你的数据库，使 `parent` 列默认为 'null'**
+
 **`laravel < 9.0` ，请使用 `2.1.x` 版本**
 
 ## 关于 `Closure Table`
@@ -375,7 +377,7 @@ class Menu extends Model
     // (非必要)distance列名,默认'distance'
     protected $distanceColumn = 'distance';
       
-    // (非必要)parent列名,默认'parent'
+    // (非必要)parent列名,默认'parent', 要求此列可以为`null`
     protected $parentColumn = 'parent';
     
 }

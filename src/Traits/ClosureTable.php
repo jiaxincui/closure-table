@@ -20,10 +20,8 @@ trait ClosureTable
     /**
      * Eloquent Listener
      */
-    public static function booted(): void
+    protected static function bootClosureTable(): void
     {
-        parent::booted();
-
         static::updating(function (self $model) {
             if ($model->isDirty($model->getParentColumn())) {
                 $model->updateClosure();
@@ -743,7 +741,11 @@ trait ClosureTable
      */
     public function getRoot(array $columns = ['*']): ?Model
     {
+        if ($this->isRoot()){
+            return $this;
+        }
         $parentColumn = $this->getParentColumn();
+
         return $this
             ->joinRelationBy('ancestor')
             ->whereNull($parentColumn)
@@ -849,6 +851,7 @@ trait ClosureTable
         }
         return $this
             ->joinRelationBy('descendant', true)
+            ->orderBy($keyName, 'asc')
             ->get($columns)
             ->toTree($keyName, $parentColumn, $childrenColumn);
     }

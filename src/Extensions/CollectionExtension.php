@@ -12,13 +12,13 @@ class CollectionExtension extends Collection
      * @param string $children
      * @return array
      */
-    public function toTree(string $primary = 'id', string $parent = 'parent', string $children = 'children')
+    public function toTree(string $primary = 'id', string $parent = 'parent', string $children = 'children'): array
     {
         $data = $this->toArray();
-        if (! isset($data[0][$parent])) {
-            return [];
-        }
         $items = array();
+        if (empty($data)) {
+            return $items;
+        }
         foreach ($data as $v) {
             $items[$v[$primary]] = $v;
         }
