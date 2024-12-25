@@ -263,14 +263,14 @@ trait ClosureTable
 
         $sql = "
             INSERT INTO {$prefixedTable} ({$ancestorColumn}, {$descendantColumn}, {$distanceColumn})
-            SELECT tbl.{$ancestorColumn}, {$descendantId}, tbl.{$distanceColumn}+1
+            SELECT tbl.{$ancestorColumn}, ?, tbl.{$distanceColumn}+1
             FROM {$prefixedTable} AS tbl
             WHERE tbl.{$descendantColumn} = ?
             UNION
-            SELECT {$descendantId}, {$descendantId}, 0
+            SELECT ?, ?, 0
         ";
 
-        DB::connection($this->connection)->insert($sql, array($ancestorId));
+        DB::connection($this->connection)->insert($sql, array($descendantId, $ancestorId, $descendantId, $descendantId));
     }
 
     /**
@@ -333,19 +333,19 @@ trait ClosureTable
             WHERE {$descendantColumn} IN (
               SELECT d FROM (
                 SELECT {$descendantColumn} as d FROM {$prefixedTable}
-                WHERE {$ancestorColumn} = {$key}
+                WHERE {$ancestorColumn} = ?
               ) as dct
             )
             AND {$ancestorColumn} IN (
               SELECT a FROM (
                 SELECT {$ancestorColumn} AS a FROM {$prefixedTable}
-                WHERE {$descendantColumn} = {$key}
-                AND {$ancestorColumn} <> {$key}
+                WHERE {$descendantColumn} = ?
+                AND {$ancestorColumn} <> ?
               ) as ct
             )
         ";
 
-        DB::connection($this->connection)->delete($sql);
+        DB::connection($this->connection)->delete($sql, array($key, $key, $key));
     }
 
     /**
@@ -370,10 +370,10 @@ trait ClosureTable
             INSERT INTO {$prefixedTable} ({$ancestorColumn}, {$descendantColumn}, {$distanceColumn})
             SELECT supertbl.{$ancestorColumn}, subtbl.{$descendantColumn}, supertbl.{$distanceColumn}+subtbl.{$distanceColumn}+1
             FROM (SELECT * FROM {$prefixedTable} WHERE {$descendantColumn} = ?) as supertbl
-            JOIN {$prefixedTable} as subtbl ON subtbl.{$ancestorColumn} = {$key}
+            JOIN {$prefixedTable} as subtbl ON subtbl.{$ancestorColumn} = ?
         ";
 
-        DB::connection($this->connection)->insert($sql, array($parentKey));
+        DB::connection($this->connection)->insert($sql, array($parentKey, $key));
     }
 
     /**
@@ -396,12 +396,12 @@ trait ClosureTable
             WHERE {$descendantColumn} IN (
             SELECT d FROM (
               SELECT {$descendantColumn} as d FROM {$prefixedTable}
-                WHERE {$ancestorColumn} = {$key}
+                WHERE {$ancestorColumn} = ?
               ) as dct
             )
         ";
 
-        DB::connection($this->connection)->delete($sql);
+        DB::connection($this->connection)->delete($sql, array($key));
     }
 
     /**
