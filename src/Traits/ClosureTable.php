@@ -22,25 +22,27 @@ trait ClosureTable
      */
     protected static function bootClosureTable(): void
     {
-        static::updating(function (self $model) {
-            if ($model->isDirty($model->getParentColumn())) {
-                $model->updateClosure();
-            }
-        });
+        static::whenBooted(function () {
+            static::updating(function (self $model) {
+                if ($model->isDirty($model->getParentColumn())) {
+                    $model->updateClosure();
+                }
+            });
 
-        static::created(function (self $model) {
-            $model->insertClosure($model->getParentKey());
-        });
-
-        static::deleting(function (self $model) {
-            $model->deleteObservers();
-        });
-
-        if (method_exists(new static, 'restored')) {
-            static::restored(function (self $model) {
+            static::created(function (self $model) {
                 $model->insertClosure($model->getParentKey());
             });
-        }
+
+            static::deleting(function (self $model) {
+                $model->deleteObservers();
+            });
+
+            if (method_exists(new static, 'restored')) {
+                static::restored(function (self $model) {
+                    $model->insertClosure($model->getParentKey());
+                });
+            }
+        });
     }
 
     /**
@@ -263,14 +265,14 @@ trait ClosureTable
 
         $sql = "
             INSERT INTO {$prefixedTable} ({$ancestorColumn}, {$descendantColumn}, {$distanceColumn})
-            SELECT tbl.{$ancestorColumn}, ?, tbl.{$distanceColumn}+1
+            SELECT tbl.{$ancestorColumn}, tbl.{$descendantColumn}, tbl.{$distanceColumn}+1
             FROM {$prefixedTable} AS tbl
             WHERE tbl.{$descendantColumn} = ?
             UNION
             SELECT ?, ?, 0
         ";
 
-        DB::connection($this->connection)->insert($sql, array($descendantId, $ancestorId, $descendantId, $descendantId));
+        DB::connection($this->connection)->insert($sql, array($ancestorId, $descendantId, $descendantId));
     }
 
     /**
