@@ -262,17 +262,20 @@ trait ClosureTable
         $ancestorColumn = $this->getAncestorColumn();
         $descendantColumn = $this->getDescendantColumn();
         $distanceColumn = $this->getDistanceColumn();
+        $conn = DB::connection($this->connection);
 
-        $sql = "
-            INSERT INTO {$prefixedTable} ({$ancestorColumn}, {$descendantColumn}, {$distanceColumn})
-            SELECT tbl.{$ancestorColumn}, tbl.{$descendantColumn}, tbl.{$distanceColumn}+1
-            FROM {$prefixedTable} AS tbl
-            WHERE tbl.{$descendantColumn} = ?
-            UNION
-            SELECT ?, ?, 0
-        ";
+        $ancestors = $conn->table($prefixedTable)->select($ancestorColumn, $distanceColumn)->where($descendantColumn, $ancestorId)->get();
+        $insert = [[$ancestorColumn => $descendantId, $descendantColumn => $descendantId, $distanceColumn => 0]];
 
-        DB::connection($this->connection)->insert($sql, array($ancestorId, $descendantId, $descendantId));
+        foreach ($ancestors as $ancestor) {
+            $insert[] = [
+                $ancestorColumn => $ancestor->{$ancestorColumn},
+                $descendantColumn => $descendantId,
+                $distanceColumn => $ancestor->{$distanceColumn} + 1
+            ];
+        }
+
+        $conn->table($prefixedTable)->insert($insert);
     }
 
     /**
@@ -959,6 +962,37 @@ trait ClosureTable
         $keyName = $this->getKeyName();
         $ids = $this->joinWithoutClosure()->get([$keyName])->pluck($keyName)->toArray();
         return in_array($key, $ids);
+    }
+
+    /**
+     * Rebuild closure table
+     *
+     * @return void
+     */
+    public static function rebuildClosure(): void
+    {
+        $instance = new static;
+        $instanceId = $instance->getKeyName();
+        $instanceTable = $instance->getPrefixedTable();
+        $prefixedTable = $instance->getPrefixedClosureTable();
+        $ancestorColumn = $instance->getAncestorColumn();
+        $descendantColumn = $instance->getDescendantColumn();
+        $distanceColumn = $instance->getDistanceColumn();
+        $parentColumn = $instance->getParentColumn();
+        $conn = DB::connection($instance->connection);
+        $conn->delete("DELETE FROM {$prefixedTable}");
+        $sql = "
+            WITH RECURSIVE paths AS (
+                SELECT {$instanceId} AS anc, {$instanceId} AS des, 0 AS dis FROM {$instanceTable}
+                UNION ALL
+                SELECT p.anc, n.{$instanceId}, p.dis + 1
+                FROM paths p
+                JOIN {$instanceTable} n ON n.{$parentColumn} = p.des
+            )
+            INSERT INTO {$prefixedTable}({$ancestorColumn}, {$descendantColumn}, {$distanceColumn})
+            SELECT anc, des, dis FROM paths;
+        ";
+        $conn->statement($sql);
     }
 
     /**

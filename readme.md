@@ -17,8 +17,9 @@
 ## 依赖
 
 - php > 8.0
-- laravel 9.0 - 12.0
-- mysql > 5.1.0
+- laravel 9.0 - 13.0
+- mysql > 8.0
+- postgresql > 8.4
 
 **3.0 版本进行了重大更新，加入了字符串ID (如uuid等) 的支持、使用了更安全的SQL语、更规范的方法签名**
 
@@ -301,15 +302,19 @@ $menu->delete();
 
 // 清理冗余的关联信息
 Menu::deleteRedundancies();
-  
+
+// 重建closure表数据
+Menu::rebuildClosure()
+
 $menu = Menu::find(20);
   
 // 修复此节点的关联, 它将重新建立 `closure` 表里的记录
 $menu->perfectNode();
   
 // 修复树关联,注意:这个操作将追朔到到根节点然后从根遍历整颗树调用perfectNode(),如果你的树很庞大将耗费大量资源,请慎用.
-// 解决方案是使用队列对每个节点使用 perfectNode()
+// 替代方法是使用rebuildClosure()方法
 $menu->perfectTree();
+
 
 ```
 
